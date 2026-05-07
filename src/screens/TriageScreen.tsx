@@ -171,7 +171,11 @@ const TriageScreen: React.FC<Props> = ({ navigation, route }) => {
     setCurrentQuestion(text);
     speakWithCallback(text, () => {
       if (!isMounted.current) return;
-      startListeningPhase();
+      // 500ms buffer: lets TTS audio fully drain before mic opens
+      setTimeout(() => {
+        if (!isMounted.current) return;
+        startListeningPhase();
+      }, 500);
     });
   }, [setSpeaking, startListeningPhase]);
 
@@ -570,6 +574,14 @@ const TriageScreen: React.FC<Props> = ({ navigation, route }) => {
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Fallback answer buttons (MVP — remplacer par STT natif en production) ──
+
+  // FALLBACK MVP — remplacer par STT natif en production
+  const handleFallbackAnswer = useCallback((answer: string) => {
+    if (indicatorPhase !== 'listening') return;
+    handleSTTResultRef.current(answer);
+  }, [indicatorPhase]);
+
   // ── Manual mic tap ────────────────────────────────────────────────────────
 
   const handleMicPress = useCallback(() => {
@@ -675,6 +687,26 @@ const TriageScreen: React.FC<Props> = ({ navigation, route }) => {
         <View style={styles.micArea}>
           {hintText ? <Text style={styles.hint}>{hintText}</Text> : null}
           <MicButton state={micState} onPress={handleMicPress} size={100} />
+
+          {/* FALLBACK MVP — remplacer par STT natif en production */}
+          {indicatorPhase === 'listening' && (
+            <View style={styles.fallbackRow}>
+              {([
+                { label: 'إيه', value: 'واه' },
+                { label: 'لا', value: 'لا' },
+                { label: 'شوية', value: 'شوية' },
+              ] as const).map(({ label, value }) => (
+                <TouchableOpacity
+                  key={label}
+                  style={styles.fallbackBtn}
+                  onPress={() => handleFallbackAnswer(value)}
+                  accessibilityLabel={label}
+                >
+                  <Text style={styles.fallbackBtnText}>{label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
         </View>
 
       </View>
@@ -772,6 +804,27 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.textMuted,
     textAlign: 'center',
+    writingDirection: 'rtl',
+  },
+  fallbackRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 16,
+  },
+  fallbackBtn: {
+    flex: 1,
+    backgroundColor: COLORS.card,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+    paddingVertical: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fallbackBtnText: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: COLORS.primary,
     writingDirection: 'rtl',
   },
 });

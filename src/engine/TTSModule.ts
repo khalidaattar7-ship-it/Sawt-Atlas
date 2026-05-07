@@ -52,7 +52,9 @@ export const speak = (text: string, language = 'ar'): Promise<void> => {
  *   speakWithCallback(question, () => STTModule.startListening())
  */
 export const speakWithCallback = async (text: string, onDone: () => void): Promise<void> => {
-  await speak(text);
+  // Safety timeout: expo-speech onDone may not fire on Expo Go → cap at 12s so STT always starts
+  const safetyMs = Math.max(12_000, text.length * 120);
+  await Promise.race([speak(text), new Promise<void>((r) => setTimeout(r, safetyMs))]);
   // Délai de sécurité pour éviter que le micro capte l'écho de la voix synthétique
   await new Promise<void>((r) => setTimeout(r, TTS_FEEDBACK_DELAY_MS));
   onDone();
