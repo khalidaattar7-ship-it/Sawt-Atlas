@@ -12,7 +12,7 @@ import {
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { Audio } from 'expo-av';
+import { requestRecordingPermissionsAsync } from 'expo-audio';
 import * as Location from 'expo-location';
 
 import { RootStackParamList } from './src/types';
@@ -97,8 +97,8 @@ export default function App() {
     // 2. Request microphone permission (required for STT)
     let micGranted = false;
     try {
-      const { status: micStatus } = await Audio.requestPermissionsAsync();
-      micGranted = micStatus === 'granted';
+      const { granted } = await requestRecordingPermissionsAsync();
+      micGranted = granted;
     } catch {}
 
     // 3. Request location permission (for GPS in alerts — non-blocking)

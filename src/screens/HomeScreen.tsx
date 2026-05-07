@@ -26,7 +26,7 @@ import { initDatabase } from '../storage/database';
 import { useTriageStore } from '../store/triageStore';
 import { RootStackParamList, PatientProfile } from '../types';
 import networkMonitor from '../utils/network-monitor';
-import { v4 as uuidv4 } from 'uuid';
+import { generateUUID } from '../utils/uuid';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
@@ -91,7 +91,7 @@ const DEFAULT_CONFIG: ContactsConfig = {
 // ─── Profil patient vide pour nouvelle session ────────────────────────────────
 
 const emptyProfile = (): PatientProfile => ({
-  id: uuidv4(),
+  id: generateUUID(),
   sex: null,
   ageCategory: null,
   isPregnant: false,
