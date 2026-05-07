@@ -8,7 +8,7 @@ export const saveSession = async (_session: TriageSession): Promise<void> => {
   const db = getDatabase();
   await db.runAsync(
     'INSERT OR REPLACE INTO sessions (id, created_at, urgency_level, data) VALUES (?, ?, ?, ?)',
-    [_session.id, _session.createdAt, _session.urgencyLevel ?? null, JSON.stringify(_session)]
+    [_session.id, _session.createdAt, _session.classification ?? null, JSON.stringify(_session)]
   );
 };
 

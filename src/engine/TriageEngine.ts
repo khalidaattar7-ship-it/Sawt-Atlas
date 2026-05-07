@@ -67,7 +67,7 @@ export class TriageEngine {
   private nodeMap: Map<string, TriageNode>;
 
   constructor() {
-    this.tree = rawTree as TriageTree;
+    this.tree = rawTree as unknown as TriageTree;
     this.nodeMap = new Map(this.tree.nodes.map((n) => [n.id, n]));
   }
 

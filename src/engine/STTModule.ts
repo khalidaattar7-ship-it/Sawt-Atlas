@@ -7,9 +7,10 @@
 
 import Voice, {
   SpeechResultsEvent,
-  SpeechPartialResultsEvent,
   SpeechErrorEvent,
 } from '@react-native-voice/voice';
+
+type SpeechPartialResultsEvent = SpeechResultsEvent;
 import { STT_TIMEOUT_MS } from '../constants/config';
 
 type ResultCallback = (text: string, confidence: number) => void;
@@ -119,7 +120,7 @@ export const onError = (callback: ErrorCallback): void => {
 /** Vérifie si la reconnaissance vocale est disponible sur l'appareil. */
 export const isAvailable = async (): Promise<boolean> => {
   try {
-    return await Voice.isAvailable();
+    return !!(await Voice.isAvailable());
   } catch {
     return false;
   }

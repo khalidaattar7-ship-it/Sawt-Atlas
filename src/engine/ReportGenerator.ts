@@ -1,7 +1,12 @@
 // Sawt Atlas Urgence — Génération du rapport texte structuré post-triage
 // Fichier créé le 2026-05-07
 
-import * as FileSystem from 'expo-file-system';
+import {
+  documentDirectory,
+  getInfoAsync,
+  makeDirectoryAsync,
+  writeAsStringAsync,
+} from 'expo-file-system/legacy';
 import { TriageSession } from '../types';
 
 const LINE = '════════════════════════════════════════';
@@ -145,7 +150,7 @@ export const generateTextReport = (session: TriageSession): string => {
 
   // Pied de page
   lines.push(LINE);
-  lines.push('⚠️  Ce rapport est un outil d'aide à l'orientation.');
+  lines.push("⚠️  Ce rapport est un outil d'aide à l'orientation.");
   lines.push('    Il ne constitue pas un diagnostic médical.');
   lines.push('    Version MVP — Sawt Atlas Urgence v1.0');
   lines.push(LINE);
@@ -161,20 +166,18 @@ export const saveReportToFile = async (
   report: string,
   sessionId: string
 ): Promise<string> => {
-  const dir = FileSystem.documentDirectory + 'reports/';
+  const dir = (documentDirectory ?? '') + 'reports/';
 
   // Crée le dossier si nécessaire
-  const dirInfo = await FileSystem.getInfoAsync(dir);
+  const dirInfo = await getInfoAsync(dir);
   if (!dirInfo.exists) {
-    await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
+    await makeDirectoryAsync(dir, { intermediates: true });
   }
 
   const filename = `rapport_${sessionId.slice(0, 8)}_${Date.now()}.txt`;
   const path = dir + filename;
 
-  await FileSystem.writeAsStringAsync(path, report, {
-    encoding: FileSystem.EncodingType.UTF8,
-  });
+  await writeAsStringAsync(path, report, { encoding: 'utf8' });
 
   return path;
 };

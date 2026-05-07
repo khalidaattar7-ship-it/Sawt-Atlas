@@ -8,7 +8,7 @@ export const french = {
   askConsciousness: 'Êtes-vous bien conscient(e) ?',
   urgencyExtreme: 'Danger extrême ! Il faut appeler les secours immédiatement.',
   urgencyRelative: 'La situation nécessite une prise en charge médicale rapide.',
-  urgencyNone: 'La situation n'est pas grave. Consultez un médecin.',
+  urgencyNone: "La situation n'est pas grave. Consultez un médecin.",
 } as const;
 
 export type FrenchKey = keyof typeof french;

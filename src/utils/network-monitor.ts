@@ -1,7 +1,9 @@
 // Sawt Atlas Urgence — Moniteur réseau : détecte le type de connectivité pour adapter le comportement offline
 // Fichier créé le 2026-05-07
 
-import NetInfo, { NetInfoState, NetInfoUnsubscribe } from '@react-native-community/netinfo';
+import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
+
+type NetInfoUnsubscribe = () => void;
 import { NetworkState } from '../types';
 
 type NetworkChangeCallback = (state: NetworkState) => void;

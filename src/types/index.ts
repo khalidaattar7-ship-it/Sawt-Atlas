@@ -115,7 +115,7 @@ export interface SilenceEvent {
 
 export type RootStackParamList = {
   Home: undefined;
-  Triage: undefined;
+  Triage: { burnResult?: { zones: string[]; percentage: number } } | undefined;
   BodyMap: undefined;
   Result: { sessionId: string };
   Companion: undefined;

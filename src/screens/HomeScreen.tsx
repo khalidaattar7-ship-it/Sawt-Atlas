@@ -310,7 +310,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           {field('Médecin référent', 'medecin_referent', 'Ex: 0661234567')}
           {field('Relais communautaire 1', 'relais_1', 'Ex: 0612345678')}
           {field('Relais communautaire 2', 'relais_2', 'Ex: 0623456789')}
-          {field('Nom de l'hôpital', 'hopital_name', 'Ex: Centre de santé Ait Benhaddou')}
+          {field("Nom de l'hôpital", 'hopital_name', 'Ex: Centre de santé Ait Benhaddou')}
           {field('GPS — Latitude', 'hopital_lat', 'Ex: 31.12345')}
           {field('GPS — Longitude', 'hopital_lng', 'Ex: -7.98765')}
         </ScrollView>
