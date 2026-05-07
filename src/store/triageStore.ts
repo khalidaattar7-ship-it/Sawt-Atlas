@@ -34,6 +34,7 @@ interface TriageState {
   setListening: (listening: boolean) => void;
   setProcessing: (processing: boolean) => void;
   setRedDetected: (detected: boolean) => void;
+  updateSession: (updates: Partial<TriageSession>) => void;
   resetSession: () => void;
 }
 
@@ -114,6 +115,11 @@ export const useTriageStore = create<TriageState>((set) => ({
   setProcessing: (isProcessing) => set({ isProcessing }),
 
   setRedDetected: (redDetectedDuringTriage) => set({ redDetectedDuringTriage }),
+
+  updateSession: (updates) =>
+    set((state) => ({
+      session: state.session ? { ...state.session, ...updates } : null,
+    })),
 
   resetSession: () =>
     set({
