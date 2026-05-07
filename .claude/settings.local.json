@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-expo-app@latest . --template blank-typescript)",
+      "Bash(npx create-expo-app@latest . --template blank-typescript --yes)",
+      "Bash(mv README.md /tmp/README_backup.md)",
+      "Bash(mv .claude /tmp/claude_backup)",
+      "Bash(npx expo *)",
+      "Bash(npm install *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
+    ]
+  }
+}
