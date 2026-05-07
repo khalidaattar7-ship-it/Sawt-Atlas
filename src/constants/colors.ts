@@ -1,15 +1,24 @@
-// Sawt Atlas Urgence — Palette de couleurs : rouge/jaune/vert pour les niveaux d'urgence
+// Sawt Atlas Urgence — Palette de couleurs officielle : urgence rouge/orange/vert + thème atlas
 // Fichier créé le 2026-05-07
 
 export const COLORS = {
-  urgencyExtreme: '#D32F2F',
-  urgencyRelative: '#F9A825',
-  urgencyNone: '#388E3C',
-  background: '#0A0A0A',
-  surface: '#1A1A1A',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#B0B0B0',
-  micActive: '#FF5252',
-  micInactive: '#757575',
-  accent: '#1565C0',
+  primary: '#14532D',
+  primaryLight: '#166534',
+  primarySoft: '#DCFCE7',
+  accent: '#92400E',
+  accentSoft: '#FEF3C7',
+  red: '#B91C1C',
+  redSoft: '#FEE2E2',
+  orange: '#C2410C',
+  orangeSoft: '#FFEDD5',
+  green: '#15803D',
+  greenSoft: '#DCFCE7',
+  bg: '#F8FAF5',
+  card: '#FFFFFF',
+  text: '#1A1A1A',
+  textMuted: '#6B7280',
+  textLight: '#9CA3AF',
+  border: '#E5E7EB',
 } as const;
+
+export type ColorKey = keyof typeof COLORS;
