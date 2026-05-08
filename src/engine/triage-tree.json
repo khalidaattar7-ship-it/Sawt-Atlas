@@ -1,1579 +1,1226 @@
 {
   "meta": {
-    "version": "1.0.0",
-    "protocol": "AVPU+ABC+9_domains",
+    "version": "2.0.0",
+    "protocol": "phases_0_to_10",
     "precaution_rules": [
-      "Si confiance STT < 0.6, classer ORANGE par précaution",
-      "Tout drapeau RED déclenche alerte SAMU immédiate sans attendre la fin du triage",
-      "En cas de silence > 40s, escalader en RED automatiquement",
-      "Enfant < 5 ans ou femme enceinte → protocoles spéciaux prioritaires",
-      "Ne jamais déconseiller d'appeler le SAMU si doute persiste"
+      "Les boutons apparaissent uniquement après que l'app a fini de parler",
+      "Rouge déclenche alerte SAMU immédiate et continue le flux",
+      "Silence > 15s → avertissement, 30s → demande aide, 40s → rouge automatique",
+      "Enfant < 5 ans → protocole pédiatrique remplace branches adultes",
+      "Femme enceinte → branche maternité ajoutée après motif principal"
     ]
   },
 
   "greeting": {
-    "speak_darija": "السلام عليكم. أنا صوت الأطلس، مساعدك الطبي. جاوبني بالصوت. واش كاين شي حالة طبية محتاج مساعدة؟",
-    "speak_fr": "Bonjour. Je suis Sawt Atlas, votre assistant médical vocal. Répondez à voix haute. Y a-t-il une urgence médicale?"
-  },
-
-  "profiling_questions": {
-    "interlocutor": {
-      "speak_darija_patient": "واش نتا اللي مريض؟ ولا كتكلم على شي واحد آخر؟",
-      "speak_darija_companion": "واش نتا اللي مريض؟ ولا كتكلم على شي واحد آخر؟",
-      "speak_fr": "Êtes-vous vous-même le patient, ou appelez-vous pour quelqu'un d'autre?",
-      "listen_for": {
-        "patient": {
-          "keywords_darija": ["أنا", "آنا", "نتا", "أنا اللي", "أنا مريض", "أنا اللي مريض"],
-          "keywords_fr": ["moi", "c'est moi", "je suis", "je suis malade"],
-          "keywords_arabe": ["أنا المريض", "أنا"],
-          "keywords_tamazight": ["nkki", "nekk"]
-        },
-        "companion": {
-          "keywords_darija": ["شي واحد آخر", "راجلي", "مرتي", "ولدي", "بنتي", "امي", "بابا", "جاري", "صاحبي", "واحد آخر", "هو", "هي"],
-          "keywords_fr": ["quelqu'un d'autre", "mon mari", "ma femme", "mon fils", "ma fille", "ma mère", "mon père"],
-          "keywords_arabe": ["شخص آخر", "زوجي", "زوجتي", "ابني", "ابنتي"],
-          "keywords_tamazight": ["yan wayed", "tamghart", "argaz"]
-        }
-      }
-    },
-    "sex": {
-      "speak_darija_patient": "واش نتا راجل ولا مرا؟",
-      "speak_darija_companion": "واش المريض راجل ولا مرا؟",
-      "speak_fr": "Le patient est-il un homme ou une femme?",
-      "listen_for": {
-        "male": {
-          "keywords_darija": ["راجل", "ذكر", "ولد", "هو"],
-          "keywords_fr": ["homme", "masculin", "garçon", "monsieur"],
-          "keywords_arabe": ["رجل", "ذكر"],
-          "keywords_tamazight": ["argaz", "awtul"]
-        },
-        "female": {
-          "keywords_darija": ["مرا", "انثى", "بنت", "هي", "مراة"],
-          "keywords_fr": ["femme", "féminin", "fille", "madame"],
-          "keywords_arabe": ["امرأة", "أنثى"],
-          "keywords_tamazight": ["tamghart", "tafruxt"]
-        }
-      }
-    },
-    "age": {
-      "speak_darija_patient": "شحال ف عمرك تقريبا؟ دري صغير، شاب، ولا كبير ف السن؟",
-      "speak_darija_companion": "شحال ف عمرو تقريبا؟ دري صغير، شاب، ولا كبير ف السن؟",
-      "speak_fr": "Quel est l'âge approximatif? Enfant, adulte, ou personne âgée?",
-      "listen_for": {
-        "child": {
-          "keywords_darija": ["دري", "طفل", "صغير", "رضيع", "بيبي", "شهور", "سنة", "سنتين", "ثلاث", "أربع", "خمس"],
-          "keywords_fr": ["enfant", "bébé", "nourrisson", "ans", "mois", "petit"],
-          "keywords_arabe": ["طفل", "رضيع", "صغير", "أشهر"],
-          "keywords_tamazight": ["arraw", "amẓi"]
-        },
-        "elderly": {
-          "keywords_darija": ["كبير", "شايب", "عجوز", "ستين", "سبعين", "ثمانين", "تسعين"],
-          "keywords_fr": ["âgé", "vieux", "vieille", "soixante", "retraité"],
-          "keywords_arabe": ["مسن", "كبير السن", "شيخ"],
-          "keywords_tamazight": ["aqjun", "tamqrant"]
-        },
-        "adult": {
-          "keywords_darija": ["شاب", "بالغ", "عشرين", "ثلاثين", "أربعين", "خمسين"],
-          "keywords_fr": ["adulte", "jeune", "vingt", "trente", "quarante"],
-          "keywords_arabe": ["بالغ", "شاب"],
-          "keywords_tamazight": ["amdan"]
-        }
-      }
-    },
-    "pregnant": {
-      "speak_darija_patient": "واش حاملة؟ ف شحال من شهر؟",
-      "speak_darija_companion": "واش المريضة حاملة؟ ف شحال من شهر؟",
-      "speak_fr": "Est-elle enceinte? À combien de mois?",
-      "listen_for": {
-        "yes": {
-          "keywords_darija": ["يه", "واه", "آه", "حاملة", "حمل", "شهر", "أشهر"],
-          "keywords_fr": ["oui", "enceinte", "grossesse", "mois"],
-          "keywords_arabe": ["نعم", "حامل", "حمل"],
-          "keywords_tamazight": ["ih", "tamettutelt"]
-        },
-        "no": {
-          "keywords_darija": ["لا", "لالا", "ماشي", "مابغاش"],
-          "keywords_fr": ["non", "pas enceinte", "pas de grossesse"],
-          "keywords_arabe": ["لا", "ليست"],
-          "keywords_tamazight": ["ala"]
-        }
-      }
-    },
-    "diabetes": {
-      "speak_darija_patient": "واش كتاخد شي دوا ديال السكري؟",
-      "speak_darija_companion": "واش كياخد شي دوا ديال السكري؟",
-      "speak_fr": "Prend-il/elle un traitement pour le diabète?",
-      "listen_for": {
-        "yes": {
-          "keywords_darija": ["يه", "واه", "سكري", "إنسولين", "ميتفورمين", "دوا السكري"],
-          "keywords_fr": ["oui", "diabète", "insuline", "metformine"],
-          "keywords_arabe": ["نعم", "سكري", "أنسولين"],
-          "keywords_tamazight": ["ih"]
-        },
-        "no": {
-          "keywords_darija": ["لا", "لالا", "ماشي"],
-          "keywords_fr": ["non", "pas de diabète"],
-          "keywords_arabe": ["لا"],
-          "keywords_tamazight": ["ala"]
-        }
-      }
-    },
-    "hypertension": {
-      "speak_darija_patient": "واش كتاخد شي دوا ديال الضغط؟",
-      "speak_darija_companion": "واش كياخد شي دوا ديال الضغط؟",
-      "speak_fr": "Prend-il/elle un traitement pour l'hypertension?",
-      "listen_for": {
-        "yes": {
-          "keywords_darija": ["يه", "واه", "ضغط", "دوا الضغط", "أملوديبين", "كابتوبريل"],
-          "keywords_fr": ["oui", "tension", "hypertension", "antihypertenseur"],
-          "keywords_arabe": ["نعم", "ضغط الدم", "ارتفاع الضغط"],
-          "keywords_tamazight": ["ih"]
-        },
-        "no": {
-          "keywords_darija": ["لا", "لالا", "ماشي"],
-          "keywords_fr": ["non"],
-          "keywords_arabe": ["لا"],
-          "keywords_tamazight": ["ala"]
-        }
-      }
-    },
-    "cardiac": {
-      "speak_darija_patient": "واش كتاخد شي دوا ديال القلب؟",
-      "speak_darija_companion": "واش كياخد شي دوا ديال القلب؟",
-      "speak_fr": "Prend-il/elle un traitement cardiaque?",
-      "listen_for": {
-        "yes": {
-          "keywords_darija": ["يه", "واه", "قلب", "دوا القلب", "نبض", "نيترات"],
-          "keywords_fr": ["oui", "coeur", "cardiaque", "nitrate", "bêtabloquant"],
-          "keywords_arabe": ["نعم", "قلب", "دواء القلب"],
-          "keywords_tamazight": ["ih"]
-        },
-        "no": {
-          "keywords_darija": ["لا", "لالا", "ماشي"],
-          "keywords_fr": ["non"],
-          "keywords_arabe": ["لا"],
-          "keywords_tamazight": ["ala"]
-        }
-      }
-    },
-    "blood_thinner": {
-      "speak_darija_patient": "واش كتاخد شي دوا كيخفف الدم؟",
-      "speak_darija_companion": "واش كياخد شي دوا كيخفف الدم؟",
-      "speak_fr": "Prend-il/elle un anticoagulant ou antiagrégant?",
-      "listen_for": {
-        "yes": {
-          "keywords_darija": ["يه", "واه", "يخفف الدم", "أسبرين", "وارفارين", "كلوبيدوقريل"],
-          "keywords_fr": ["oui", "anticoagulant", "aspirine", "warfarine", "plavix"],
-          "keywords_arabe": ["نعم", "مضاد تخثر", "أسبرين"],
-          "keywords_tamazight": ["ih"]
-        },
-        "no": {
-          "keywords_darija": ["لا", "لالا", "ماشي"],
-          "keywords_fr": ["non"],
-          "keywords_arabe": ["لا"],
-          "keywords_tamazight": ["ala"]
-        }
-      }
-    },
-    "allergies": {
-      "speak_darija_patient": "واش عندك شي حساسية لأدوية ولا أكل؟",
-      "speak_darija_companion": "واش عندو شي حساسية لأدوية ولا أكل؟",
-      "speak_fr": "A-t-il/elle des allergies connues (médicaments, aliments)?",
-      "listen_for": {
-        "yes": {
-          "keywords_darija": ["يه", "واه", "حساسية", "حساس"],
-          "keywords_fr": ["oui", "allergie", "allergique"],
-          "keywords_arabe": ["نعم", "حساسية"],
-          "keywords_tamazight": ["ih"]
-        },
-        "no": {
-          "keywords_darija": ["لا", "لالا", "ماشي", "ما عندوش"],
-          "keywords_fr": ["non", "pas d'allergie"],
-          "keywords_arabe": ["لا", "ليس لديه"],
-          "keywords_tamazight": ["ala"]
-        }
-      }
-    },
-    "recurrent": {
-      "speak_darija_patient": "واش هاد الشي وقع ليك من قبل؟",
-      "speak_darija_companion": "واش هاد الشي وقع ليه من قبل؟",
-      "speak_fr": "Est-ce que cela s'est déjà produit avant?",
-      "listen_for": {
-        "yes": {
-          "keywords_darija": ["يه", "واه", "من قبل", "مرة اخرى", "عاود"],
-          "keywords_fr": ["oui", "déjà", "encore", "plusieurs fois"],
-          "keywords_arabe": ["نعم", "من قبل", "سبق"],
-          "keywords_tamazight": ["ih", "zik"]
-        },
-        "no": {
-          "keywords_darija": ["لا", "لالا", "لأول مرة", "أول مرة"],
-          "keywords_fr": ["non", "première fois", "jamais"],
-          "keywords_arabe": ["لا", "أول مرة"],
-          "keywords_tamazight": ["ala", "tawat tamezwarut"]
-        }
-      }
-    }
+    "speak_darija": "مرحبا بيك. أنا صوت الأطلس، المساعد الطبي ديالك. غادي نسولك شي أسئلة باش نعرف الحالة. جاوبني بإيه ولا لا."
   },
 
   "nodes": [
     {
-      "id": "avpu_alert",
-      "category": "avpu",
+      "id": "phase1_interlocutor",
+      "phase": 1,
+      "icon": "👤",
+      "profile_key": "interlocutorMode",
+      "question_darija_patient": "واش نتا أو نتي اللي مريض؟ ولا كتكلم على شي واحد آخر؟",
+      "question_darija_companion": "واش نتا أو نتي اللي مريض؟ ولا كتكلم على شي واحد آخر؟",
+      "buttons": [
+        {
+          "label": "أنا مريض",
+          "value": "patient",
+          "next": "phase2a_sex",
+          "color_key": "green",
+          "keywords_darija": ["أنا", "آنا", "نتا", "أنا اللي", "أنا مريض"]
+        },
+        {
+          "label": "كنتكلم على شي واحد",
+          "value": "companion",
+          "next": "phase2a_sex",
+          "color_key": "primary",
+          "keywords_darija": ["شي واحد", "راجلي", "مرتي", "ولدي", "بنتي", "امي", "بابا", "صاحبي", "هو", "هي", "آخر"]
+        }
+      ]
+    },
+
+    {
+      "id": "phase2a_sex",
+      "phase": 2,
+      "icon": "👤",
+      "profile_key": "sex",
+      "question_darija_patient": "واش المريض راجل ولا مرا؟",
+      "question_darija_companion": "واش المريض راجل ولا مرا؟",
+      "buttons": [
+        {
+          "label": "راجل",
+          "value": "male",
+          "next": "phase2b_age",
+          "color_key": "primary",
+          "keywords_darija": ["راجل", "ذكر", "ولد", "هو", "رجل"]
+        },
+        {
+          "label": "مرا",
+          "value": "female",
+          "next": "phase2b_age",
+          "color_key": "primary",
+          "keywords_darija": ["مرا", "انثى", "بنت", "هي", "مراة", "امرأة"]
+        }
+      ]
+    },
+
+    {
+      "id": "phase2b_age",
+      "phase": 2,
+      "icon": "🎂",
+      "profile_key": "ageCategory",
+      "question_darija_patient": "شحال ف عمرو تقريبا؟",
+      "question_darija_companion": "شحال ف عمرو تقريبا؟",
+      "buttons": [
+        {
+          "label": "دري صغير (أقل من 5 سنين)",
+          "value": "child",
+          "next": "phase2c_pregnant",
+          "color_key": "primary",
+          "keywords_darija": ["دري", "طفل", "صغير", "رضيع", "بيبي", "شهور", "سنة", "سنتين", "ثلاث", "أربع", "خمس"]
+        },
+        {
+          "label": "شاب أو بالغ",
+          "value": "adult",
+          "next": "phase2c_pregnant",
+          "color_key": "primary",
+          "keywords_darija": ["شاب", "بالغ", "عشرين", "ثلاثين", "أربعين", "خمسين"]
+        },
+        {
+          "label": "كبير ف السن (+65)",
+          "value": "elderly",
+          "next": "phase2c_pregnant",
+          "color_key": "primary",
+          "keywords_darija": ["كبير", "شايب", "عجوز", "ستين", "سبعين", "ثمانين"]
+        }
+      ]
+    },
+
+    {
+      "id": "phase2c_pregnant",
+      "phase": 2,
+      "icon": "🤰",
+      "profile_key": "isPregnant",
+      "question_darija_patient": "واش حاملة؟",
+      "question_darija_companion": "واش حاملة؟",
+      "buttons": [
+        {
+          "label": "إيه حاملة",
+          "value": "yes",
+          "next": "phase2d_months",
+          "color_key": "orange",
+          "keywords_darija": ["يه", "واه", "آه", "حاملة", "حمل", "نعم"]
+        },
+        {
+          "label": "لا",
+          "value": "no",
+          "next": "phase3a_diabetes",
+          "color_key": "green",
+          "keywords_darija": ["لا", "لالا", "ماشي", "لالا حاملة"]
+        }
+      ]
+    },
+
+    {
+      "id": "phase2d_months",
+      "phase": 2,
+      "icon": "📅",
+      "profile_key": "pregnancyMonths",
+      "question_darija_patient": "ف شحال من شهر؟",
+      "question_darija_companion": "ف شحال من شهر؟",
+      "buttons": [
+        {
+          "label": "1-3 شهور",
+          "value": "trimester1",
+          "next": "phase3a_diabetes",
+          "color_key": "green",
+          "keywords_darija": ["واحد", "جوج", "تلاتة", "أول", "ثلاثة"]
+        },
+        {
+          "label": "4-6 شهور",
+          "value": "trimester2",
+          "next": "phase3a_diabetes",
+          "color_key": "orange",
+          "keywords_darija": ["ربعة", "خمسة", "ستة", "أربعة"]
+        },
+        {
+          "label": "7-9 شهور",
+          "value": "trimester3",
+          "next": "phase3a_diabetes",
+          "color_key": "red",
+          "keywords_darija": ["سبعة", "تمنية", "تسعة", "سبع", "ثمانية"]
+        }
+      ]
+    },
+
+    {
+      "id": "phase3a_diabetes",
+      "phase": 3,
+      "icon": "💊",
+      "profile_key": "diabetes",
+      "question_darija_patient": "واش كتاخد شي دوا ديال السكري؟",
+      "question_darija_companion": "واش كياخد شي دوا ديال السكري؟",
+      "buttons": [
+        {
+          "label": "إيه",
+          "value": "yes",
+          "next": "phase3b_hypertension",
+          "color_key": "orange",
+          "keywords_darija": ["يه", "واه", "آه", "سكري", "إنسولين", "دوا السكري", "نعم"]
+        },
+        {
+          "label": "لا",
+          "value": "no",
+          "next": "phase3b_hypertension",
+          "color_key": "green",
+          "keywords_darija": ["لا", "لالا", "ماشي", "ما عندوش"]
+        }
+      ]
+    },
+
+    {
+      "id": "phase3b_hypertension",
+      "phase": 3,
+      "icon": "💊",
+      "profile_key": "hypertension",
+      "question_darija_patient": "واش كتاخد شي دوا ديال الضغط؟",
+      "question_darija_companion": "واش كياخد شي دوا ديال الضغط؟",
+      "buttons": [
+        {
+          "label": "إيه",
+          "value": "yes",
+          "next": "phase3c_cardiac",
+          "color_key": "orange",
+          "keywords_darija": ["يه", "واه", "ضغط", "دوا الضغط", "نعم"]
+        },
+        {
+          "label": "لا",
+          "value": "no",
+          "next": "phase3c_cardiac",
+          "color_key": "green",
+          "keywords_darija": ["لا", "لالا", "ماشي"]
+        }
+      ]
+    },
+
+    {
+      "id": "phase3c_cardiac",
+      "phase": 3,
+      "icon": "💊",
+      "profile_key": "cardiac",
+      "question_darija_patient": "واش كتاخد شي دوا ديال القلب؟",
+      "question_darija_companion": "واش كياخد شي دوا ديال القلب؟",
+      "buttons": [
+        {
+          "label": "إيه",
+          "value": "yes",
+          "next": "phase3d_blood_thinner",
+          "color_key": "orange",
+          "keywords_darija": ["يه", "واه", "قلب", "دوا القلب", "نعم"]
+        },
+        {
+          "label": "لا",
+          "value": "no",
+          "next": "phase3d_blood_thinner",
+          "color_key": "green",
+          "keywords_darija": ["لا", "لالا", "ماشي"]
+        }
+      ]
+    },
+
+    {
+      "id": "phase3d_blood_thinner",
+      "phase": 3,
+      "icon": "💊",
+      "profile_key": "bloodThinner",
+      "question_darija_patient": "واش كتاخد شي دوا كيخفف الدم؟",
+      "question_darija_companion": "واش كياخد شي دوا كيخفف الدم؟",
+      "buttons": [
+        {
+          "label": "إيه",
+          "value": "yes",
+          "next": "phase3e_allergies",
+          "color_key": "orange",
+          "keywords_darija": ["يه", "واه", "يخفف الدم", "أسبرين", "وارفارين", "نعم"]
+        },
+        {
+          "label": "لا",
+          "value": "no",
+          "next": "phase3e_allergies",
+          "color_key": "green",
+          "keywords_darija": ["لا", "لالا", "ماشي"]
+        }
+      ]
+    },
+
+    {
+      "id": "phase3e_allergies",
+      "phase": 3,
+      "icon": "⚠️",
+      "profile_key": "allergies",
+      "question_darija_patient": "واش عندك شي حساسية للدوا؟",
+      "question_darija_companion": "واش عندو شي حساسية للدوا؟",
+      "buttons": [
+        {
+          "label": "إيه",
+          "value": "yes",
+          "next": "phase3f_recurrent",
+          "color_key": "orange",
+          "keywords_darija": ["يه", "واه", "حساسية", "نعم"]
+        },
+        {
+          "label": "لا",
+          "value": "no",
+          "next": "phase3f_recurrent",
+          "color_key": "green",
+          "keywords_darija": ["لا", "لالا", "ماشي", "ما عندوش"]
+        }
+      ]
+    },
+
+    {
+      "id": "phase3f_recurrent",
+      "phase": 3,
+      "icon": "🔄",
+      "profile_key": "isRecurrent",
+      "question_darija_patient": "واش هاد الشي وقع ليك من قبل؟",
+      "question_darija_companion": "واش هاد الشي وقع ليه من قبل؟",
+      "buttons": [
+        {
+          "label": "إيه",
+          "value": "yes",
+          "next": "phase4_scene_safety",
+          "color_key": "orange",
+          "keywords_darija": ["يه", "واه", "من قبل", "عاود", "مرة أخرى", "نعم"]
+        },
+        {
+          "label": "لا",
+          "value": "no",
+          "next": "phase4_scene_safety",
+          "color_key": "green",
+          "keywords_darija": ["لا", "لالا", "أول مرة", "لأول مرة"]
+        },
+        {
+          "label": "ما عرفش",
+          "value": "unknown",
+          "next": "phase4_scene_safety",
+          "color_key": "primary",
+          "keywords_darija": ["ما عرفش", "مش عارف", "ما نعرفش"]
+        }
+      ]
+    },
+
+    {
+      "id": "phase4_scene_safety",
+      "phase": 4,
+      "icon": "⚠️",
+      "question_darija_patient": "واش المكان فيه خطر؟ شي نار، غاز، ولا حيطة طايحة؟",
+      "question_darija_companion": "واش المكان فيه خطر؟ شي نار، غاز، ولا حيطة طايحة؟",
+      "buttons": [
+        {
+          "label": "لا، المكان آمن",
+          "value": "safe",
+          "next": "phase5_avpu",
+          "color_key": "green",
+          "keywords_darija": ["لا", "آمن", "ماشي خطر", "مأمون", "بخير"]
+        },
+        {
+          "label": "إيه، كاين الخطر",
+          "value": "danger",
+          "next": "phase4_confirm_safe",
+          "color_key": "red",
+          "instructions_darija": "بعدو المريض من المكان الخطير قبل أي حاجة أخرى.",
+          "keywords_darija": ["يه", "واه", "خطر", "نار", "غاز", "حيطة"]
+        }
+      ]
+    },
+
+    {
+      "id": "phase4_confirm_safe",
+      "phase": 4,
+      "icon": "✅",
+      "question_darija_patient": "إيلا كان المكان أمن دابا، ضغط للمتابعة.",
+      "question_darija_companion": "إيلا كان المكان أمن دابا، ضغط للمتابعة.",
+      "buttons": [
+        {
+          "label": "تم، المكان أمن الآن",
+          "value": "confirmed",
+          "next": "phase5_avpu",
+          "color_key": "green",
+          "keywords_darija": ["تم", "أمن", "آمن", "وقفنا", "بعدنا"]
+        }
+      ]
+    },
+
+    {
+      "id": "phase5_avpu",
+      "phase": 5,
       "icon": "🧠",
-      "priority": 1,
-      "question_fr": "Est-il conscient et parle-t-il normalement?",
-      "question_darija": "واش فايق و كيهضر عادي؟",
-      "speak_darija_patient": "واش نتا فايق مزيان و كتهضر عادي؟",
-      "speak_darija_companion": "واش هو فايق مزيان و كيهضر عادي؟",
-      "listen_for": {
-        "alert": {
-          "keywords_darija": ["يه", "واه", "فايق", "عادي", "مزيان", "كيهضر", "واعي", "كيكلم"],
-          "keywords_fr": ["oui", "conscient", "normal", "alerte", "parle"],
-          "keywords_arabe": ["نعم", "واعٍ", "يتكلم", "بخير"],
-          "keywords_tamazight": ["ih", "yah", "ittessakka"],
-          "next": "abc_airway"
+      "question_darija_patient": "واش الشخص فايق؟ واش كيسمعك و كيجاوبك؟",
+      "question_darija_companion": "واش الشخص فايق؟ واش كيسمعك و كيجاوبك؟",
+      "buttons": [
+        {
+          "label": "إيه، فايق مزيان",
+          "value": "alert",
+          "next": "phase6a_airway",
+          "color_key": "green",
+          "keywords_darija": ["يه", "فايق", "مزيان", "عادي", "كيهضر", "واعي"]
         },
-        "verbal": {
-          "keywords_darija": ["شوية", "بصح", "يسمع", "مزيانش", "صعيب", "بالصعيبة", "يفهم بصح مايهضرش"],
-          "keywords_fr": ["un peu", "répond à la voix", "verbal", "difficile"],
-          "keywords_arabe": ["يستجيب للصوت", "بصعوبة"],
-          "keywords_tamazight": ["isell"],
-          "flag": "verbal_only",
-          "next": "abc_airway"
+        {
+          "label": "كيجاوب غير إلا عيطتي عليه",
+          "value": "voice",
+          "next": "phase6a_airway",
+          "color_key": "orange",
+          "keywords_darija": ["شوية", "إلا عيطتي", "بالصعيبة", "بصح يسمع"]
         },
-        "pain_only": {
-          "keywords_darija": ["غير للوجع", "ماكيجاوبش", "غير الوجع", "ماعاودش", "كيتألم بصح"],
-          "keywords_fr": ["douleur seulement", "réagit à la douleur", "ne répond pas"],
-          "keywords_arabe": ["يتألم فقط", "لا يستجيب إلا للألم"],
-          "keywords_tamazight": ["iger"],
-          "result": {
-            "level": "ORANGE",
-            "label_fr": "Conscience altérée — réagit à la douleur uniquement (AVPU=P)",
-            "label_darija": "الوعي ناقص — كيتحرك غير للوجع",
-            "confidence": 0.9,
-            "instructions_fr": ["Allonger sur le côté (PLS)", "Ne rien donner à boire", "Surveillance continue", "Appeler le 150"],
-            "instructions_darija": ["دوه للبيطار فهاذ الساعة", "ما تعطيوش ماء", "راقبو باش تتنفس", "عيطو لـ 150"],
-            "speak_result_darija": "الحالة ديالو محتاجة طبيب بسرعة. ما تعطيوهش حتى شي حاجة. راقبو باش كيتنفس. ديوه للبيطار دابا.",
-            "alert_samu": false,
-            "sms_template": null
-          }
-        },
-        "unresponsive": {
-          "keywords_darija": ["ماكيتحركش", "فاقد الوعي", "غايب", "مغمى عليه", "تامورت", "ما يشوفش", "سقط", "خر"],
-          "keywords_fr": ["inconscient", "ne répond pas", "inerte", "évanoui", "tombe"],
-          "keywords_arabe": ["فاقد الوعي", "لا يستجيب", "مغمى عليه"],
-          "keywords_tamazight": ["ur ittessakka", "ur ittwalin"],
-          "result": {
-            "level": "RED",
-            "label_fr": "Inconscient — AVPU=U — Perte de conscience complète",
-            "label_darija": "فقدان الوعي الكامل — خطر مباشر",
-            "confidence": 1.0,
-            "instructions_fr": ["Appeler le 15 immédiatement", "Vérifier la respiration", "RCP si apnée", "Position de sécurité"],
-            "instructions_darija": ["عيطو للـ 15 دابا", "شوفو واش كيتنفس", "إلا ما كيتنفسش ابدا نفس الفم", "دوه في وضعية الأمان"],
-            "speak_result_darija": "خطر كبير! عيطو للـ 15 دابا دابا! شوفو واش كيتنفس. إلا ما كيتنفسش، ابدا نفس الفم. ما تحركوهش.",
-            "alert_samu": true,
-            "sms_template": "🔴 URGENCE EXTRÊME\nInconscient AVPU=U\n{profil}\nGPS: {gps}\nCentre: {centre}\nHeure: {time}"
-          }
+        {
+          "label": "ما كيجاوبش",
+          "value": "unresponsive",
+          "next": "phase6a_airway",
+          "color_key": "red",
+          "triggerRed": true,
+          "instructions_darija": "حالة خطيرة بزاف! الشخص مغمي عليه. ديروه على الجنب، شوفو واش كيتنفس، و ديوه للسبيطار فورا.",
+          "keywords_darija": ["ماكيجاوبش", "غايب", "مغمي", "فاقد الوعي", "ما يسمعش"]
         }
-      }
+      ]
     },
 
     {
-      "id": "abc_airway",
-      "category": "abc",
-      "icon": "💨",
-      "priority": 2,
-      "question_fr": "Les voies aériennes sont-elles libres? Respire-t-il sans bruit?",
-      "question_darija": "واش الفم و النيف ديالو خاويين؟ واش كيتنفس بلا صوت غريب؟",
-      "speak_darija_patient": "واش تقدر تتنفس مزيان؟ واش كاين شي شي ف الفم ولا النيف؟",
-      "speak_darija_companion": "شوف الفم و النيف ديالو. واش خاويين؟ واش كيتنفس بلا صوت غريب؟",
-      "listen_for": {
-        "clear": {
-          "keywords_darija": ["يه", "واه", "خاوي", "مزيان", "عادي", "ما كاين والو"],
-          "keywords_fr": ["oui", "libre", "clair", "normal", "rien"],
-          "keywords_arabe": ["نعم", "خالية", "طبيعية"],
-          "keywords_tamazight": ["ih", "ilem"],
-          "next": "abc_breathing"
+      "id": "phase6a_airway",
+      "phase": 6,
+      "icon": "🌬️",
+      "question_darija_patient": "واش الفم و النيف ديالو خاويين؟ واش كيتنفس بلا صوت غريب؟",
+      "question_darija_companion": "واش الفم و النيف ديالو خاويين؟ واش كيتنفس بلا صوت غريب؟",
+      "buttons": [
+        {
+          "label": "إيه، عادي",
+          "value": "clear",
+          "next": "phase6b_breathing",
+          "color_key": "green",
+          "keywords_darija": ["يه", "خاوي", "مزيان", "عادي", "ما كاين والو"]
         },
-        "obstruction": {
-          "keywords_darija": ["لا", "كاين شي حاجة", "فم", "صوت غريب", "حرحرة", "ما يتنفسش", "مسدود", "بلع"],
-          "keywords_fr": ["obstruction", "corps étranger", "bruit", "ne respire pas", "bloqué"],
-          "keywords_arabe": ["انسداد", "جسم غريب", "صوت غريب", "لا يتنفس"],
-          "keywords_tamazight": ["ifakk", "ur ittenfes"],
-          "result": {
-            "level": "RED",
-            "label_fr": "Obstruction des voies aériennes — Urgence extrême",
-            "label_darija": "انسداد في التنفس — خطر مباشر",
-            "confidence": 1.0,
-            "instructions_fr": ["Manœuvre de Heimlich si corps étranger", "Appeler le 15 immédiatement", "Ne rien donner à boire"],
-            "instructions_darija": ["إلا بلع شي حاجة: ضرب ف الظهر 5 مرات بقوة", "عيطو للـ 15 دابا", "ما تعطيوهش ماء"],
-            "speak_result_darija": "خطر! عيطو للـ 15 دابا! إلا بلع شي حاجة، ضربو ف الظهر ديالو خمس مرات بقوة. ما تعطيوهش ماء.",
-            "alert_samu": true,
-            "sms_template": "🔴 URGENCE EXTRÊME\nObstruction voies aériennes\n{profil}\nGPS: {gps}\nCentre: {centre}\nHeure: {time}"
-          }
+        {
+          "label": "كاين صوت غريب / ماكيتنفسش",
+          "value": "obstructed",
+          "next": "phase6b_breathing",
+          "color_key": "red",
+          "triggerRed": true,
+          "instructions_darija": "الطريق التنفسي مسدود! خلو الفم خاوي، ديروه على الجنب، و طلبو المساعدة فورا.",
+          "keywords_darija": ["لا", "صوت غريب", "حرحرة", "ما يتنفسش", "مسدود"]
         }
-      }
+      ]
     },
 
     {
-      "id": "abc_breathing",
-      "category": "abc",
+      "id": "phase6b_breathing",
+      "phase": 6,
       "icon": "🫁",
-      "priority": 3,
-      "question_fr": "Respire-t-il normalement? Rythme, couleur des lèvres?",
-      "question_darija": "واش كيتنفس بشكل عادي؟ واش الشفاف ديالو خضر ولا زرق؟",
-      "speak_darija_patient": "واش تقدر تتنفس عادي؟ هل الشفاف ديالك مزيانين؟",
-      "speak_darija_companion": "شوف كيفاش كيتنفس. واش التنفس سريع جداً ولا بطيء جداً؟ واش الشفاف ديالو زرقين؟",
-      "listen_for": {
-        "normal": {
-          "keywords_darija": ["يه", "واه", "عادي", "مزيان", "كيتنفس"],
-          "keywords_fr": ["oui", "normal", "respire", "bien"],
-          "keywords_arabe": ["نعم", "طبيعي", "يتنفس"],
-          "keywords_tamazight": ["ih", "ittenfes"],
-          "next": "abc_circulation"
+      "question_darija_patient": "واش كيتنفس بشكل عادي؟ ولا عندو صعوبة؟",
+      "question_darija_companion": "واش كيتنفس بشكل عادي؟ ولا عندو صعوبة؟",
+      "buttons": [
+        {
+          "label": "إيه، عادي",
+          "value": "normal",
+          "next": "phase6c_bleeding",
+          "color_key": "green",
+          "keywords_darija": ["يه", "عادي", "مزيان", "عادي التنفس"]
         },
-        "abnormal": {
-          "keywords_darija": ["لا", "صعيب", "مزيانش", "زرق", "سريع", "بطيء", "لا يتنفس", "ضيق", "انقطاع"],
-          "keywords_fr": ["non", "difficile", "bleu", "rapide", "lent", "ne respire pas", "dyspnée"],
-          "keywords_arabe": ["لا", "صعوبة", "أزرق", "سريع", "بطيء"],
-          "keywords_tamazight": ["ala", "azggar"],
-          "result": {
-            "level": "RED",
-            "label_fr": "Détresse respiratoire — fréquence anormale ou cyanose",
-            "label_darija": "صعوبة في التنفس أو زرقة — خطر مباشر",
-            "confidence": 1.0,
-            "instructions_fr": ["Appeler le 15 immédiatement", "Asseoir en position semi-assise", "Ne rien donner à boire", "Surveiller en continu"],
-            "instructions_darija": ["عيطو للـ 15 دابا", "جلسو بنص نص", "ما تعطيوهش ماء", "راقبو باش"],
-            "speak_result_darija": "خطر! التنفس ديالو مزيانش. عيطو للـ 15 دابا. جلسوه نص نص. ما تعطيوهش ماء.",
-            "alert_samu": true,
-            "sms_template": "🔴 URGENCE EXTRÊME\nDétresse respiratoire\n{profil}\nGPS: {gps}\nCentre: {centre}\nHeure: {time}"
-          }
+        {
+          "label": "صعوبة شوية",
+          "value": "mild",
+          "next": "phase6c_bleeding",
+          "color_key": "orange",
+          "keywords_darija": ["شوية", "شوية صعيب", "صعيبة شوية"]
+        },
+        {
+          "label": "صعوبة كبيرة / شفافو زرقين",
+          "value": "severe",
+          "next": "phase6c_bleeding",
+          "color_key": "red",
+          "triggerRed": true,
+          "instructions_darija": "صعوبة تنفس شديدة! قلسوه، حلو ليه الهدوم، و طلبو الإسعاف فورا.",
+          "keywords_darija": ["صعوبة كبيرة", "زرقين", "ما كيتنفسش", "خايف", "شفافو زرقين"]
         }
-      }
+      ]
     },
 
     {
-      "id": "abc_circulation",
-      "category": "abc",
+      "id": "phase6c_bleeding",
+      "phase": 6,
       "icon": "🩸",
-      "priority": 4,
-      "question_fr": "Y a-t-il un saignement important qui ne s'arrête pas?",
-      "question_darija": "واش كاين دم كيخرج بزاف ما بغاش يوقف؟",
-      "speak_darija_patient": "واش كاين شي دم كيخرج منك بزاف و ما بغاش يوقف؟",
-      "speak_darija_companion": "واش كاين شي دم كيخرج منو بزاف و ما بغاش يوقف؟",
-      "listen_for": {
-        "no_bleeding": {
-          "keywords_darija": ["لا", "ما كاين والو", "ماشي", "لالا"],
-          "keywords_fr": ["non", "pas de saignement", "rien"],
-          "keywords_arabe": ["لا", "لا توجد"],
-          "keywords_tamazight": ["ala"],
-          "next": "motive_pain"
+      "question_darija_patient": "واش كاين دم كيخرج بزاف ما بغاش يوقف؟",
+      "question_darija_companion": "واش كاين دم كيخرج بزاف ما بغاش يوقف؟",
+      "buttons": [
+        {
+          "label": "لا",
+          "value": "no",
+          "next": "__ABC_DONE__",
+          "color_key": "green",
+          "keywords_darija": ["لا", "لالا", "ما كاين والو", "ماشي"]
         },
-        "bleeding": {
-          "keywords_darija": ["يه", "واه", "دم", "كيخرج الدم", "جرح", "كتير"],
-          "keywords_fr": ["oui", "sang", "saignement", "plaie", "beaucoup"],
-          "keywords_arabe": ["نعم", "دم", "نزيف", "جرح"],
-          "keywords_tamazight": ["ih", "idammen"],
-          "next": "abc_pregnant_bleeding"
+        {
+          "label": "إيه، دم بزاف",
+          "value": "yes",
+          "next": "phase6d_bleeding_pregnant",
+          "color_key": "red",
+          "keywords_darija": ["يه", "واه", "دم", "كيخرج الدم", "دم بزاف"]
         }
-      }
+      ]
     },
 
     {
-      "id": "abc_pregnant_bleeding",
-      "category": "abc",
-      "icon": "🤰",
-      "priority": 5,
-      "question_fr": "La patiente est-elle enceinte avec ce saignement?",
-      "question_darija": "واش حاملة و كيخرج منها الدم؟",
-      "speak_darija_patient": "واش نتي حاملة و كيخرج منك الدم؟",
-      "speak_darija_companion": "واش المريضة حاملة و كيخرج منها الدم؟",
-      "listen_for": {
-        "pregnant_bleeding": {
-          "keywords_darija": ["يه", "واه", "حاملة", "حمل", "حبلة"],
-          "keywords_fr": ["oui", "enceinte", "grossesse"],
-          "keywords_arabe": ["نعم", "حامل"],
-          "keywords_tamazight": ["ih"],
-          "result": {
-            "level": "RED",
-            "label_fr": "Hémorragie obstétricale — Urgence extrême",
-            "label_darija": "نزيف عند الحامل — خطر على الأم و الجنين",
-            "confidence": 1.0,
-            "instructions_fr": ["Appeler le 15 immédiatement", "Allonger jambes surélevées", "Ne pas retirer corps étranger", "Surveiller état conscience"],
-            "instructions_darija": ["عيطو للـ 15 دابا", "نضجوها على ضهرها و رفعو الرجلين", "ما تحلوش ولا حاجة", "راقبو الوعي ديالها"],
-            "speak_result_darija": "خطر عليها و على الجنين! عيطو للـ 15 دابا دابا. نضجوها و رفعو الرجلين. ما تحركوهاش.",
-            "alert_samu": true,
-            "sms_template": "🔴 URGENCE EXTRÊME\nHémorragie obstétricale\n{profil} — enceinte\nGPS: {gps}\nCentre: {centre}\nHeure: {time}"
-          }
+      "id": "phase6d_bleeding_pregnant",
+      "phase": 6,
+      "icon": "🩸",
+      "question_darija_patient": "واش المرا حاملة و كيخرج منها الدم؟",
+      "question_darija_companion": "واش المرا حاملة و كيخرج منها الدم؟",
+      "buttons": [
+        {
+          "label": "إيه، حاملة",
+          "value": "pregnant_bleeding",
+          "next": "__ABC_DONE__",
+          "color_key": "red",
+          "triggerRed": true,
+          "instructions_darija": "مدّيها على ضهرها، رفعو رجليها، ما تديرو والو ف الداخل، غطّيوها، للمستشفى فورا.",
+          "keywords_darija": ["يه", "حاملة", "مرا حاملة"]
         },
-        "not_pregnant": {
-          "keywords_darija": ["لا", "ماشي حاملة", "لالا"],
-          "keywords_fr": ["non", "pas enceinte"],
-          "keywords_arabe": ["لا", "ليست حاملاً"],
-          "keywords_tamazight": ["ala"],
-          "result": {
-            "level": "RED",
-            "label_fr": "Hémorragie massive non obstétricale",
-            "label_darija": "نزيف شديد — خطر مباشر",
-            "confidence": 1.0,
-            "instructions_fr": ["Appeler le 15 immédiatement", "Comprimer la plaie fortement", "Garrot si membre", "Ne pas retirer corps étranger"],
-            "instructions_darija": ["عيطو للـ 15 دابا", "ضغطو على الجرح بقوة", "إلا ف اليد ولا الرجل: اربطوها بشدة فوق الجرح", "ما تحلوش ولا حاجة"],
-            "speak_result_darija": "خطر! نزيف شديد. عيطو للـ 15 دابا. ضغطو على الجرح بقماش نظيف بقوة. إلا ف يد ولا رجل اربطوها فوق الجرح.",
-            "alert_samu": true,
-            "sms_template": "🔴 URGENCE EXTRÊME\nHémorragie massive\n{profil}\nGPS: {gps}\nCentre: {centre}\nHeure: {time}"
-          }
+        {
+          "label": "لا",
+          "value": "normal_bleeding",
+          "next": "__ABC_DONE__",
+          "color_key": "red",
+          "triggerRed": true,
+          "instructions_darija": "عيطو على الجرح بثوب نقي بالقوة، ما تحيدوش يدّكم، رفعو البلاصة، للسبيطار.",
+          "keywords_darija": ["لا", "ماشي حاملة", "لا ماشي"]
         }
-      }
+      ]
     },
 
     {
-      "id": "motive_pain",
-      "category": "motive",
-      "icon": "😣",
-      "priority": 6,
-      "question_fr": "Où est-ce que ça fait mal exactement?",
-      "question_darija": "واش كاين الوجع؟ فين بالضبط؟",
-      "speak_darija_patient": "واش كاين شي وجع؟ فين بالضبط كيوجعك؟",
-      "speak_darija_companion": "واش كاين شي وجع؟ فين بالضبط؟",
-      "listen_for": {
-        "chest": {
-          "keywords_darija": ["صدر", "قلب", "ف الصدر", "ف القلب", "هنا فوق"],
-          "keywords_fr": ["poitrine", "thorax", "coeur", "sternum"],
-          "keywords_arabe": ["صدر", "قلب", "في الصدر"],
-          "keywords_tamazight": ["ul", "aydud"],
-          "next": "motive_chest"
+      "id": "phase7_complaint",
+      "phase": 7,
+      "icon": "🔍",
+      "question_darija_patient": "واش كاين الوجع؟ فين بالضبط؟",
+      "question_darija_companion": "واش كاين الوجع؟ فين بالضبط؟",
+      "buttons": [
+        {
+          "label": "وجع ف الصدر",
+          "value": "cardio",
+          "next": "phase8a_chest1",
+          "color_key": "red",
+          "keywords_darija": ["صدر", "وجع الصدر", "قلب", "ألم الصدر"]
         },
-        "trauma": {
-          "keywords_darija": ["طيح", "حادثة", "تتعطل", "ضرب", "سقط", "ضربة"],
-          "keywords_fr": ["accident", "chute", "blessure", "coup", "traumatisme"],
-          "keywords_arabe": ["حادث", "سقوط", "إصابة", "ضربة"],
-          "keywords_tamazight": ["ikk", "yawet"],
-          "next": "motive_trauma"
+        {
+          "label": "حادثة / طيحة / حرقة",
+          "value": "trauma",
+          "next": "phase8b_trauma_type",
+          "color_key": "orange",
+          "keywords_darija": ["حادثة", "طيحة", "حرقة", "جرح", "صدمة"]
         },
-        "burn": {
-          "keywords_darija": ["حرقة", "حرق", "نار", "ماء سخون", "كيمياء"],
-          "keywords_fr": ["brûlure", "feu", "eau chaude", "chimique"],
-          "keywords_arabe": ["حرق", "نار", "ماء ساخن"],
-          "keywords_tamazight": ["tafat", "aman issunan"],
-          "next": "motive_burn"
+        {
+          "label": "سخانة / برد",
+          "value": "fever",
+          "next": "phase8c_fever",
+          "color_key": "orange",
+          "keywords_darija": ["سخانة", "حمى", "برد", "درجة حرارة"]
         },
-        "fever": {
-          "keywords_darija": ["سخانة", "حمى", "سخون", "كيسخن", "درجة"],
-          "keywords_fr": ["fièvre", "température", "chaud", "fébricule"],
-          "keywords_arabe": ["حمى", "ارتفاع حرارة", "سخونة"],
-          "keywords_tamazight": ["tasraft"],
-          "next": "motive_fever"
+        {
+          "label": "مشاكل ف التنفس",
+          "value": "respiratory",
+          "next": "phase8d_breathing",
+          "color_key": "red",
+          "keywords_darija": ["تنفس", "نفس", "صعوبة تنفس", "ضيق"]
         },
-        "bite": {
-          "keywords_darija": ["قرص", "عقرب", "حية", "كلب", "حشرة", "عضة"],
-          "keywords_fr": ["morsure", "piqûre", "scorpion", "serpent", "chien"],
-          "keywords_arabe": ["لدغة", "عقرب", "ثعبان", "كلب"],
-          "keywords_tamazight": ["agriz", "tafenzart"],
-          "next": "motive_bite"
+        {
+          "label": "دوخة / توهان",
+          "value": "neuro",
+          "next": "phase8e_dizziness",
+          "color_key": "orange",
+          "keywords_darija": ["دوخة", "توهان", "رأس", "دوار"]
         },
-        "general": {
-          "keywords_darija": ["بطن", "راس", "رجل", "ضهر", "جانب", "كامل الجسم"],
-          "keywords_fr": ["ventre", "tête", "jambe", "dos", "côté", "partout"],
-          "keywords_arabe": ["بطن", "رأس", "رجل", "ظهر"],
-          "keywords_tamazight": ["adfel", "aqerru"],
-          "next": "fever_severity"
+        {
+          "label": "تقرص من حيوان",
+          "value": "bite",
+          "next": "phase8f_bite_type",
+          "color_key": "orange",
+          "keywords_darija": ["تقرص", "عقرب", "أفعى", "كلب", "حيوان"]
+        },
+        {
+          "label": "ما كاينش وجع / حاجة أخرى",
+          "value": "general",
+          "next": "__END__",
+          "color_key": "primary",
+          "keywords_darija": ["ما كاينش", "حاجة أخرى", "غير", "ماشي وجع"]
         }
-      }
+      ]
     },
 
     {
-      "id": "motive_chest",
-      "category": "motive",
+      "id": "phase8a_chest1",
+      "phase": 8,
       "icon": "❤️",
-      "priority": 7,
-      "question_fr": "La douleur est-elle dans la poitrine?",
-      "question_darija": "واش الوجع ف الصدر؟",
-      "speak_darija_patient": "كيفاش الوجع ديال الصدر؟ واش شديد و ما يتحمل؟ مند امتى؟",
-      "speak_darija_companion": "كيفاش الوجع ديال الصدر؟ واش شديد و ما يتحمل؟ مند امتى؟",
-      "listen_for": {
-        "cardiac": {
-          "keywords_darija": ["شديد", "عشرين دقيقة", "نص ساعة", "ساعة", "ينتشر", "ذراع", "فم", "عرق"],
-          "keywords_fr": ["fort", "vingt minutes", "irradie", "bras", "mâchoire", "transpiration"],
-          "keywords_arabe": ["شديد", "منذ ساعة", "ينتشر", "ذراع"],
-          "keywords_tamazight": ["igan", "ameqqran"],
-          "next": "cardio_chest_pain"
+      "question_darija_patient": "واش الوجع ف الصدر قوي و كيعصر؟ منذ أكثر من 20 دقيقة؟",
+      "question_darija_companion": "واش الوجع ف الصدر قوي و كيعصر؟ منذ أكثر من 20 دقيقة؟",
+      "buttons": [
+        {
+          "label": "إيه، قوي و كيعصر",
+          "value": "severe_long",
+          "next": "phase8a_radiation",
+          "color_key": "red",
+          "keywords_darija": ["يه", "قوي", "كيعصر", "شديد", "20 دقيقة"]
         },
-        "mild_chest": {
-          "keywords_darija": ["شوية", "هشة", "مزيانش", "ف الجانب"],
-          "keywords_fr": ["un peu", "légère", "côté"],
-          "keywords_arabe": ["بسيطة", "خفيفة"],
-          "keywords_tamazight": ["imzziy"],
-          "next": "cardio_fast_face"
+        {
+          "label": "لا، وجع خفيف",
+          "value": "mild",
+          "next": "phase8a_fast",
+          "color_key": "green",
+          "keywords_darija": ["لا", "خفيف", "شوية"]
+        },
+        {
+          "label": "لا، غير شوية",
+          "value": "brief",
+          "next": "phase8a_fast",
+          "color_key": "orange",
+          "keywords_darija": ["شوية", "غير شوية", "قليلاً"]
         }
-      }
+      ]
     },
 
     {
-      "id": "motive_trauma",
-      "category": "motive",
-      "icon": "🤕",
-      "priority": 8,
-      "question_fr": "Y a-t-il eu un accident ou une chute?",
-      "question_darija": "واش وقعات شي حادثة ولا طيحة؟",
-      "speak_darija_patient": "شنو لي وقع بالضبط؟ واش طحتي ولا ضربك شي حاجة؟",
-      "speak_darija_companion": "شنو لي وقع بالضبط؟ واش طاح ولا ضربو شي حاجة؟",
-      "listen_for": {
-        "head_trauma": {
-          "keywords_darija": ["راس", "ضرب راسو", "طاح على الراس", "فقد الوعي"],
-          "keywords_fr": ["tête", "crâne", "inconscient", "chute tête"],
-          "keywords_arabe": ["رأس", "جمجمة", "فقد وعيه"],
-          "keywords_tamazight": ["aqerru"],
-          "next": "trauma_head"
+      "id": "phase8a_radiation",
+      "phase": 8,
+      "icon": "❤️",
+      "question_darija_patient": "واش الوجع كيمشي للدراع ليسر ولا للفك؟",
+      "question_darija_companion": "واش الوجع كيمشي للدراع ليسر ولا للفك؟",
+      "buttons": [
+        {
+          "label": "إيه",
+          "value": "yes",
+          "next": "phase8a_fast",
+          "color_key": "red",
+          "triggerRed": true,
+          "instructions_darija": "قلسوه ما تمدوهش! حلّو ليه الحوايج. أسبيرين إلا كاينة يمدغها. ما يمشيش. للسبيطار فورا.",
+          "keywords_darija": ["يه", "واه", "دراع", "فك", "كتف"]
         },
-        "spine_trauma": {
-          "keywords_darija": ["نخاع", "ضهر", "عنق", "رقبة", "ما يتحركش"],
-          "keywords_fr": ["dos", "colonne", "nuque", "cou", "paralysie"],
-          "keywords_arabe": ["عمود فقري", "رقبة", "ظهر"],
-          "keywords_tamazight": ["tdirt", "agemmir"],
-          "next": "trauma_spine"
-        },
-        "limb_trauma": {
-          "keywords_darija": ["يد", "رجل", "ذراع", "كسر", "انكسر"],
-          "keywords_fr": ["bras", "jambe", "fracture", "cassé"],
-          "keywords_arabe": ["يد", "رجل", "كسر"],
-          "keywords_tamazight": ["afus", "adar"],
-          "next": "trauma_fracture"
+        {
+          "label": "لا",
+          "value": "no",
+          "next": "phase8a_fast",
+          "color_key": "green",
+          "keywords_darija": ["لا", "لالا", "ماشي"]
         }
-      }
+      ]
     },
 
     {
-      "id": "motive_burn",
-      "category": "motive",
-      "icon": "🔥",
-      "priority": 9,
-      "question_fr": "Y a-t-il une brûlure?",
-      "question_darija": "واش كاينة شي حرقة؟",
-      "speak_darija_patient": "من أين جاءت الحرقة؟ نار، ماء سخون، كيمياء، ولا كهرباء؟",
-      "speak_darija_companion": "من أين جاءت الحرقة؟ نار، ماء سخون، كيمياء، ولا كهرباء؟",
-      "listen_for": {
-        "fire": {
-          "keywords_darija": ["نار", "حريق", "حرق بالنار"],
-          "keywords_fr": ["feu", "incendie", "flamme"],
-          "keywords_arabe": ["نار", "حريق"],
-          "keywords_tamazight": ["tafat"],
-          "flag": "burn_fire",
-          "next": "burn_body_map"
-        },
-        "hot_water": {
-          "keywords_darija": ["ماء سخون", "شاي", "قهوة", "طاجين", "بخار"],
-          "keywords_fr": ["eau chaude", "thé", "vapeur", "bouillante"],
-          "keywords_arabe": ["ماء ساخن", "شاي", "بخار"],
-          "keywords_tamazight": ["aman issunan"],
-          "flag": "burn_scald",
-          "next": "burn_body_map"
-        },
-        "chemical": {
-          "keywords_darija": ["كيمياء", "حامض", "صودا", "منتوج"],
-          "keywords_fr": ["chimique", "acide", "produit"],
-          "keywords_arabe": ["كيماوي", "حمض"],
-          "keywords_tamazight": ["timaddak"],
-          "flag": "burn_chemical",
-          "next": "burn_body_map"
-        },
-        "electrical": {
-          "keywords_darija": ["كهرباء", "صعقة", "ضربة كهرباء"],
-          "keywords_fr": ["électrique", "électrocution", "courant"],
-          "keywords_arabe": ["كهرباء", "صعقة كهربائية"],
-          "keywords_tamazight": ["takatut"],
-          "flag": "burn_electrical",
-          "next": "burn_body_map"
-        }
-      }
-    },
-
-    {
-      "id": "burn_body_map",
-      "category": "burn",
-      "icon": "🗺️",
-      "priority": 10,
-      "question_fr": "Indiquez les zones brûlées sur la carte corporelle",
-      "question_darija": "واش تقدر تشير على الجسم فين الحرقة؟",
-      "speak_darija_patient": "دابا غتشوف صورة الجسم على الشاشة. شير على الأماكن اللي حارقة.",
-      "speak_darija_companion": "دابا غتشوف صورة الجسم على الشاشة. شير على الأماكن اللي حارقة.",
-      "listen_for": {
-        "body_map_done": {
-          "keywords_darija": ["دابا", "كملت", "هكا", "كاملة"],
-          "keywords_fr": ["fait", "terminé", "voilà"],
-          "keywords_arabe": ["تم", "انتهيت"],
-          "keywords_tamazight": ["immal"],
-          "flag": "TRIGGER_BODY_MAP",
-          "next": "burn_classification"
-        }
-      }
-    },
-
-    {
-      "id": "burn_classification",
-      "category": "burn",
-      "icon": "📊",
-      "priority": 11,
-      "question_fr": "Classification de la brûlure selon la règle des 9",
-      "question_darija": "تقييم الحرقة حسب المنطقة",
-      "speak_darija_patient": "كيفاش الحرقة؟ واش كاين فقاعات ولا الجلد أسود؟",
-      "speak_darija_companion": "كيفاش الحرقة؟ واش كاين فقاعات ولا الجلد أسود؟",
-      "listen_for": {
-        "severe": {
-          "keywords_darija": ["أسود", "عميق", "ما كيحسش", "فقاعات كبيرة", "واسعة"],
-          "keywords_fr": ["noir", "profond", "insensible", "grandes cloques", "large"],
-          "keywords_arabe": ["أسود", "عميق", "فقاعات كبيرة"],
-          "keywords_tamazight": ["aberkan"],
-          "result": {
-            "level": "RED",
-            "label_fr": "Brûlure grave — 3ème degré ou > 9% surface corporelle",
-            "label_darija": "حرقة خطيرة — عميقة أو واسعة",
-            "confidence": 1.0,
-            "instructions_fr": ["Appeler le 15 immédiatement", "Refroidir à l'eau froide 15 min", "Ne pas percer les cloques", "Couvrir avec linge propre"],
-            "instructions_darija": ["عيطو للـ 15 دابا", "برردو بالماء البارد 15 دقيقة", "ما تثقبوش الفقاعات", "غطوا بقماش نظيف"],
-            "speak_result_darija": "الحرقة خطيرة! عيطو للـ 15 دابا. بردو بالماء البارد ربع ساعة. ما تثقبوش الفقاعات. غطوا بقماش نظيف.",
-            "alert_samu": true,
-            "sms_template": "🔴 URGENCE EXTRÊME\nBrûlure grave {pourcentage}% SCT\n{profil}\nGPS: {gps}\nCentre: {centre}\nHeure: {time}"
-          }
-        },
-        "moderate": {
-          "keywords_darija": ["فقاعات", "أحمر", "يوجع بزاف", "صغيرة"],
-          "keywords_fr": ["rouge", "cloques", "douloureux", "petite"],
-          "keywords_arabe": ["أحمر", "فقاعات", "مؤلم"],
-          "keywords_tamazight": ["azeggagh"],
-          "result": {
-            "level": "ORANGE",
-            "label_fr": "Brûlure modérée — 2ème degré superficiel",
-            "label_darija": "حرقة متوسطة — محتاجة عناية طبية",
-            "confidence": 0.9,
-            "instructions_fr": ["Urgences dans l'heure", "Refroidir à l'eau froide 15 min", "Ne pas percer les cloques"],
-            "instructions_darija": ["روحو للبيطار ف ساعة", "بردو بالماء البارد ربع ساعة", "ما تثقبوش الفقاعات"],
-            "speak_result_darija": "الحرقة محتاجة طبيب. بردو بالماء البارد ربع ساعة. ما تثقبوش الفقاعات. روحو للبيطار ف ساعة.",
-            "alert_samu": false,
-            "sms_template": null
-          }
-        }
-      }
-    },
-
-    {
-      "id": "motive_fever",
-      "category": "motive",
-      "icon": "🌡️",
-      "priority": 12,
-      "question_fr": "Y a-t-il de la fièvre?",
-      "question_darija": "واش عندو السخانة؟",
-      "speak_darija_patient": "واش كاينة سخانة؟ شحال درجة؟",
-      "speak_darija_companion": "واش كاينة سخانة؟ شحال درجة تقريبا؟",
-      "listen_for": {
-        "yes": {
-          "keywords_darija": ["يه", "واه", "سخانة", "حمى", "سخون"],
-          "keywords_fr": ["oui", "fièvre", "température", "chaud"],
-          "keywords_arabe": ["نعم", "حمى", "حرارة"],
-          "keywords_tamazight": ["ih", "tasraft"],
-          "next": "fever_severity"
-        },
-        "no": {
-          "keywords_darija": ["لا", "ماشي", "لالا", "برد"],
-          "keywords_fr": ["non", "pas de fièvre"],
-          "keywords_arabe": ["لا", "لا حمى"],
-          "keywords_tamazight": ["ala"],
-          "next": "motive_bite"
-        }
-      }
-    },
-
-    {
-      "id": "motive_bite",
-      "category": "motive",
-      "icon": "🦂",
-      "priority": 13,
-      "question_fr": "Y a-t-il eu une morsure ou une piqûre d'animal?",
-      "question_darija": "واش تقرص من شي حيوان ولا عقرب؟",
-      "speak_darija_patient": "واش قرصك شي حيوان؟ عقرب، حية، ولا كلب؟",
-      "speak_darija_companion": "واش قرصو شي حيوان؟ عقرب، حية، ولا كلب؟",
-      "listen_for": {
-        "yes": {
-          "keywords_darija": ["يه", "واه", "قرص", "عقرب", "حية", "كلب", "حشرة"],
-          "keywords_fr": ["oui", "morsure", "piqûre", "scorpion", "serpent", "chien"],
-          "keywords_arabe": ["نعم", "لدغة", "عقرب", "ثعبان", "كلب"],
-          "keywords_tamazight": ["ih", "tafenzart", "agriz"],
-          "next": "bite_type"
-        },
-        "no": {
-          "keywords_darija": ["لا", "ماشي", "لالا"],
-          "keywords_fr": ["non", "rien"],
-          "keywords_arabe": ["لا"],
-          "keywords_tamazight": ["ala"],
-          "next": "fever_severity"
-        }
-      }
-    },
-
-    {
-      "id": "fever_severity",
-      "category": "fever",
-      "icon": "🌡️",
-      "priority": 14,
-      "question_fr": "Quelle est la température et y a-t-il une raideur de nuque?",
-      "question_darija": "شحال درجة السخانة؟ واش كاينة تيبس ف الرقبة؟",
-      "speak_darija_patient": "شحال درجة السخانة؟ واش قادر تدور الراس ديالك؟",
-      "speak_darija_companion": "شحال تقريبا درجة السخانة؟ واش يقدر يدور الراس بلا وجع شديد؟",
-      "listen_for": {
-        "meningitis": {
-          "keywords_darija": ["أربعين", "40", "ما يدورش الراس", "تيبس", "رقبة", "رشح"],
-          "keywords_fr": ["40", "quarante", "raideur nuque", "méningite", "photophobie"],
-          "keywords_arabe": ["40 درجة", "تصلب الرقبة", "حساسية للضوء"],
-          "keywords_tamazight": ["40"],
-          "result": {
-            "level": "RED",
-            "label_fr": "Suspicion méningite — Urgence extrême",
-            "label_darija": "خطر التهاب السحايا — طوارئ فورية",
-            "confidence": 1.0,
-            "instructions_fr": ["Appeler le 15 immédiatement", "Mettre dans l'obscurité", "Ne rien donner à boire", "Surveiller conscience"],
-            "instructions_darija": ["عيطو للـ 15 دابا", "حطوه ف المكان المظلم", "ما تعطيوهش ماء", "راقبو الوعي ديالو"],
-            "speak_result_darija": "خطر كبير! هاد الأعراض تشبه التهاب السحايا. عيطو للـ 15 دابا. حطوه ف المظلم. ما تعطيوهش ماء.",
-            "alert_samu": true,
-            "sms_template": "🔴 URGENCE EXTRÊME\nSuspicion méningite\n{profil} — T°>40°C + raideur nuque\nGPS: {gps}\nCentre: {centre}\nHeure: {time}"
-          }
-        },
-        "high_fever": {
-          "keywords_darija": ["38", "39", "40", "سخون", "كتير"],
-          "keywords_fr": ["38", "39", "élevée", "haute"],
-          "keywords_arabe": ["38", "39", "مرتفعة"],
-          "keywords_tamazight": ["38", "39"],
-          "result": {
-            "level": "ORANGE",
-            "label_fr": "Fièvre élevée 38.5-40°C — Consultation urgente",
-            "label_darija": "سخانة عالية — محتاجة طبيب بسرعة",
-            "confidence": 0.9,
-            "instructions_fr": ["Consultation médicale dans l'heure", "Paracétamol 15mg/kg si disponible", "Hydratation orale", "Déshabiller"],
-            "instructions_darija": ["روحو للطبيب ف ساعة", "دوو الباراسيتامول إلا عندكم", "شربوه ماء بزاف", "خلعو الحوايج ديالو"],
-            "speak_result_darija": "السخانة عالية. خلعو الحوايج ديالو. شربوه ماء. إلا عندكم باراسيتامول أعطيوه. روحو للطبيب ف ساعة.",
-            "alert_samu": false,
-            "sms_template": null
-          }
-        },
-        "low_fever": {
-          "keywords_darija": ["37", "38", "شوية", "هشة", "خفيفة"],
-          "keywords_fr": ["37", "38", "légère", "peu"],
-          "keywords_arabe": ["37", "38", "خفيفة"],
-          "keywords_tamazight": ["37", "38"],
-          "result": {
-            "level": "GREEN",
-            "label_fr": "Fièvre légère < 38.5°C — Non urgent",
-            "label_darija": "سخانة خفيفة — مشي خطر",
-            "confidence": 0.85,
-            "instructions_fr": ["Repos", "Hydratation", "Paracétamol", "Consulter si aggravation"],
-            "instructions_darija": ["ارتاح", "شرب ماء بزاف", "باراسيتامول", "إلا تزادت رجعو للطبيب"],
-            "speak_result_darija": "السخانة خفيفة. ما كاين حتى خطر دابا. شرب ماء بزاف. باراسيتامول. إلا تزادت أو ما تحسنش ف يومين، روح للطبيب.",
-            "alert_samu": false,
-            "sms_template": null
-          }
-        }
-      }
-    },
-
-    {
-      "id": "bite_type",
-      "category": "bite",
-      "icon": "🦂",
-      "priority": 15,
-      "question_fr": "Quel type d'animal? Scorpion, serpent ou chien?",
-      "question_darija": "أشنو لي قرصو؟ عقرب، حية، ولا كلب؟",
-      "speak_darija_patient": "أشنو لي قرصك بالضبط؟",
-      "speak_darija_companion": "أشنو لي قرصو بالضبط؟",
-      "listen_for": {
-        "scorpion": {
-          "keywords_darija": ["عقرب"],
-          "keywords_fr": ["scorpion"],
-          "keywords_arabe": ["عقرب"],
-          "keywords_tamazight": ["tafenzart"],
-          "next": "bite_severity"
-        },
-        "snake": {
-          "keywords_darija": ["حية", "أفعى", "ثعبان"],
-          "keywords_fr": ["serpent", "vipère", "couleuvre"],
-          "keywords_arabe": ["ثعبان", "حية"],
-          "keywords_tamazight": ["afennar"],
-          "next": "bite_severity"
-        },
-        "dog": {
-          "keywords_darija": ["كلب", "كليب"],
-          "keywords_fr": ["chien", "canine"],
-          "keywords_arabe": ["كلب"],
-          "keywords_tamazight": ["aydi"],
-          "result": {
-            "level": "ORANGE",
-            "label_fr": "Morsure de chien — Risque rabique — Consultation urgente",
-            "label_darija": "عضة كلب — خطر السعار — محتاجة طبيب",
-            "confidence": 1.0,
-            "instructions_fr": ["Laver abondamment eau + savon 15 min", "Ne pas suturer", "Consultation antirabique obligatoire"],
-            "instructions_darija": ["غسلو الجرح بالماء و الصابون 15 دقيقة", "ما تخيطوهش", "حتما روحو للطبيب ديال السعار"],
-            "speak_result_darija": "غسلو الجرح بالماء و الصابون مزيان 15 دقيقة. ما تخيطوهش. حتما روحو للطبيب ديال التطعيم ضد السعار.",
-            "alert_samu": false,
-            "sms_template": null
-          }
-        }
-      }
-    },
-
-    {
-      "id": "bite_severity",
-      "category": "bite",
-      "icon": "⚠️",
-      "priority": 16,
-      "question_fr": "Y a-t-il des signes systémiques graves?",
-      "question_darija": "واش كاين علامات خطيرة بعد القرصة؟",
-      "speak_darija_patient": "واش كاين غما، كحل ف العينين، صعوبة تنفس، أو تشنجات؟",
-      "speak_darija_companion": "واش كاين غما، عينين كحلاوين، صعوبة تنفس، أو تشنجات؟",
-      "listen_for": {
-        "severe": {
-          "keywords_darija": ["غما", "كحل", "تشنج", "ما يتنفسش", "دوار", "قي", "تقيء"],
-          "keywords_fr": ["convulsion", "noir", "respiration", "vomissement", "vertiges"],
-          "keywords_arabe": ["تشنجات", "سواد في العين", "صعوبة تنفس", "قيء"],
-          "keywords_tamazight": ["iftis", "ur ittenfes"],
-          "result": {
-            "level": "RED",
-            "label_fr": "Envenimation grave — Signes systémiques présents",
-            "label_darija": "سمية خطيرة — علامات خطر موجودة",
-            "confidence": 1.0,
-            "instructions_fr": ["Appeler le 15 immédiatement", "Immobiliser le membre", "Ne pas inciser ni sucer", "Retirer les bijoux"],
-            "instructions_darija": ["عيطو للـ 15 دابا", "حركوش الطرف المقروص", "ما تشدوش الدم بالفم", "خلعو الخواتم و السوار"],
-            "speak_result_darija": "خطر سمية! عيطو للـ 15 دابا. ما تحركوش الطرف المقروص. ما تشدوش الدم بالفم. خلعو الحلي.",
-            "alert_samu": true,
-            "sms_template": "🔴 URGENCE EXTRÊME\nEnvenimation grave {type}\n{profil}\nGPS: {gps}\nCentre: {centre}\nHeure: {time}"
-          }
-        },
-        "mild": {
-          "keywords_darija": ["وجع", "حرقان", "تورم", "أحمر", "ماشي كتير"],
-          "keywords_fr": ["douleur", "gonflement", "rouge", "légère"],
-          "keywords_arabe": ["ألم", "تورم", "احمرار"],
-          "keywords_tamazight": ["iger", "irsif"],
-          "result": {
-            "level": "ORANGE",
-            "label_fr": "Envenimation modérée — Surveillance hospitalière nécessaire",
-            "label_darija": "قرصة — محتاجة مراقبة طبية",
-            "confidence": 0.9,
-            "instructions_fr": ["Aller aux urgences", "Immobiliser", "Ne pas inciser"],
-            "instructions_darija": ["روحو للبيطار", "ما تحركوش المنطقة", "ما تشدوش الدم"],
-            "speak_result_darija": "روحو للبيطار بسرعة. ما تحركوش الطرف المقروص. ما تشدوش الدم بالفم.",
-            "alert_samu": false,
-            "sms_template": null
-          }
-        }
-      }
-    },
-
-    {
-      "id": "cardio_chest_pain",
-      "category": "cardio",
-      "icon": "❤️‍🔥",
-      "priority": 17,
-      "question_fr": "Douleur constrictive > 20 min avec irradiation?",
-      "question_darija": "واش الوجع ف الصدر شديد و مند أكتر من 20 دقيقة و ينتشر للذراع أو الفك؟",
-      "speak_darija_patient": "واش الوجع ف الصدر شديد كيعصر؟ مند امتى؟ واش ينتشر لأي مكان آخر؟",
-      "speak_darija_companion": "واش الوجع ف الصدر شديد كيعصر؟ مند امتى؟ واش ينتشر لأي مكان آخر؟",
-      "listen_for": {
-        "heart_attack": {
-          "keywords_darija": ["يعصر", "شديد", "ساعة", "ذراع", "فك", "عرق", "دقيقة", "20", "نص ساعة"],
-          "keywords_fr": ["constrictif", "fort", "irradie", "bras", "mâchoire", "sueur", "20 minutes"],
-          "keywords_arabe": ["يضغط", "شديد", "ينتشر", "ذراع", "فك"],
-          "keywords_tamazight": ["igan", "afus"],
-          "result": {
-            "level": "RED",
-            "label_fr": "Suspicion IDM — Infarctus du myocarde — Urgence absolue",
-            "label_darija": "خطر احتشاء القلب — طوارئ مطلقة",
-            "confidence": 1.0,
-            "instructions_fr": ["Appeler le 15 immédiatement", "Aspirer 250mg aspirine (si disponible et non allergie)", "Position demi-assise", "Repos absolu"],
-            "instructions_darija": ["عيطو للـ 15 دابا", "إلا عندكم أسبرين و ماشي حساس: شرب نص قرص", "جلسو نص نص", "راحة تامة"],
-            "speak_result_darija": "خطر على القلب! عيطو للـ 15 دابا دابا! إلا عندكم أسبرين و ماشي حساس، شرب نص قرص. جلسو نص نص. ما تتحركوش.",
-            "alert_samu": true,
-            "sms_template": "🔴 URGENCE EXTRÊME\nSuspicion IDM\n{profil}\nGPS: {gps}\nCentre: {centre}\nHeure: {time}"
-          }
-        },
-        "non_cardiac": {
-          "keywords_darija": ["شوية", "هشة", "مزيانش بصح ماشي كتير", "جانب"],
-          "keywords_fr": ["légère", "côté", "pas grave"],
-          "keywords_arabe": ["خفيفة", "جانب"],
-          "keywords_tamazight": ["imzziy"],
-          "next": "cardio_fast_face"
-        }
-      }
-    },
-
-    {
-      "id": "cardio_fast_face",
-      "category": "cardio",
-      "icon": "🧑",
-      "priority": 18,
-      "question_fr": "Y a-t-il une déviation du visage (score FAST)?",
-      "question_darija": "واش وجهو مشى لجهة وحدة؟",
-      "speak_darija_patient": "واش وجهك مشى لجهة وحدة أو فمك مشيح؟",
-      "speak_darija_companion": "شوف وجهو: واش الفم أو العين مشيح لجهة وحدة؟",
-      "listen_for": {
-        "yes": {
-          "keywords_darija": ["يه", "واه", "مشيح", "مشى", "جهة وحدة", "فم مشيح"],
-          "keywords_fr": ["oui", "dévié", "tordu", "asymétrique"],
-          "keywords_arabe": ["نعم", "منحرف", "غير متوازن"],
-          "keywords_tamazight": ["ih"],
-          "flag": "fast_face_positive",
-          "next": "cardio_fast_arms"
-        },
-        "no": {
-          "keywords_darija": ["لا", "ماشي", "عادي"],
-          "keywords_fr": ["non", "normal", "symétrique"],
-          "keywords_arabe": ["لا", "طبيعي"],
-          "keywords_tamazight": ["ala"],
-          "next": "cardio_fast_arms"
-        }
-      }
-    },
-
-    {
-      "id": "cardio_fast_arms",
-      "category": "cardio",
-      "icon": "💪",
-      "priority": 19,
-      "question_fr": "Un bras tombe-t-il lors de l'extension des deux bras?",
-      "question_darija": "واش إذا مد الذراعين للقدام، واحدة كتطيح؟",
-      "speak_darija_patient": "مد الذراعين للقدام. واش واحدة كتطيح ولا ضعيفة؟",
-      "speak_darija_companion": "اطلب منو يمد الذراعين للقدام. واش واحدة كتطيح؟",
-      "listen_for": {
-        "yes": {
-          "keywords_darija": ["يه", "واه", "كتطيح", "ضعيفة", "ما كترفعهاش"],
-          "keywords_fr": ["oui", "tombe", "faible", "ne lève pas"],
-          "keywords_arabe": ["نعم", "تسقط", "ضعيفة"],
-          "keywords_tamazight": ["ih"],
-          "flag": "fast_arm_positive",
-          "next": "cardio_fast_speech"
-        },
-        "no": {
-          "keywords_darija": ["لا", "عادي", "ما تطيحش"],
-          "keywords_fr": ["non", "normal"],
-          "keywords_arabe": ["لا", "طبيعي"],
-          "keywords_tamazight": ["ala"],
-          "next": "cardio_fast_speech"
-        }
-      }
-    },
-
-    {
-      "id": "cardio_fast_speech",
-      "category": "cardio",
-      "icon": "🗣️",
-      "priority": 20,
-      "question_fr": "Y a-t-il des troubles de la parole?",
-      "question_darija": "واش الكلام ديالو مزيان؟",
-      "speak_darija_patient": "واش كتقدر تكلم مزيان؟ ولا الكلام ما يخرجش مزيان؟",
-      "speak_darija_companion": "واش الكلام ديالو مزيان؟ واش كيهدر بلا مشكل؟",
-      "listen_for": {
-        "yes_problem": {
-          "keywords_darija": ["لا", "مزيانش", "ما يهدرش", "دو دو", "ماكيفهموهش", "مبهم"],
-          "keywords_fr": ["non", "difficile", "incompréhensible", "bégaie", "trouble"],
-          "keywords_arabe": ["لا", "لا يتكلم جيداً", "غير مفهوم"],
-          "keywords_tamazight": ["ala"],
-          "flag": "fast_speech_positive",
-          "next": "cardio_fast_time"
-        },
-        "no_problem": {
-          "keywords_darija": ["يه", "واه", "عادي", "مزيان"],
-          "keywords_fr": ["oui", "normal", "bien"],
-          "keywords_arabe": ["نعم", "طبيعي"],
-          "keywords_tamazight": ["ih"],
-          "next": "cardio_fast_time"
-        }
-      }
-    },
-
-    {
-      "id": "cardio_fast_time",
-      "category": "cardio",
-      "icon": "⏱️",
-      "priority": 21,
-      "question_fr": "Quand ont commencé ces symptômes?",
-      "question_darija": "مند امتى بدات هاد الأعراض؟",
-      "speak_darija_patient": "مند امتى بدا هاد الشي؟ دقايق، ساعات، ولا يومين؟",
-      "speak_darija_companion": "مند امتى بدا هاد الشي؟ دقايق، ساعات، ولا يومين؟",
-      "listen_for": {
-        "recent": {
-          "keywords_darija": ["دقايق", "ساعة", "ساعتين", "اليوم", "دابا", "توا"],
-          "keywords_fr": ["minutes", "heure", "aujourd'hui", "maintenant", "récent"],
-          "keywords_arabe": ["دقائق", "ساعة", "اليوم", "الآن"],
-          "keywords_tamazight": ["tura", "akud imik"],
-          "result": {
-            "level": "RED",
-            "label_fr": "Suspicion AVC — Symptômes FAST récents — Urgence absolue",
-            "label_darija": "خطر السكتة الدماغية — طوارئ مطلقة",
-            "confidence": 1.0,
-            "instructions_fr": ["Appeler le 15 immédiatement", "Ne rien donner à boire ni à manger", "Position allongée tête légèrement surélevée", "Heure de début notée"],
-            "instructions_darija": ["عيطو للـ 15 دابا", "ما تعطيوهش ماء ولا أكل", "نضجوه و رفعو الراس شوية", "حفظو الوقت اللي بدا فيه"],
-            "speak_result_darija": "خطر السكتة الدماغية! عيطو للـ 15 دابا دابا! ما تعطيوهش ماء أو أكل. نضجوه. الوقت مهم جداً!",
-            "alert_samu": true,
-            "sms_template": "🔴 URGENCE EXTRÊME\nSuspicion AVC — FAST positif\n{profil}\nDébut: {time_onset}\nGPS: {gps}\nCentre: {centre}\nHeure: {time}"
-          }
-        },
-        "old": {
-          "keywords_darija": ["أمس", "يومين", "أسبوع", "من زمان"],
-          "keywords_fr": ["hier", "plusieurs jours", "semaine"],
-          "keywords_arabe": ["أمس", "أيام", "أسبوع"],
-          "keywords_tamazight": ["iḍ-ass", "ussan"],
-          "result": {
-            "level": "ORANGE",
-            "label_fr": "Symptômes neurologiques anciens — Consultation neurologique urgente",
-            "label_darija": "أعراض عصبية قديمة — محتاجة طبيب متخصص",
-            "confidence": 0.85,
-            "instructions_fr": ["Consultation neurologique dans les 24h", "Éviter l'effort", "Ne pas conduire"],
-            "instructions_darija": ["روحو لطبيب الأعصاب ف 24 ساعة", "ما تجهدوش الجسم", "ما تسوقوش"],
-            "speak_result_darija": "الأعراض ديالو محتاجة طبيب متخصص ف الأعصاب. روحو ف 24 ساعة. ما يسوقش.",
-            "alert_samu": false,
-            "sms_template": null
-          }
-        }
-      }
-    },
-
-    {
-      "id": "trauma_head",
-      "category": "trauma",
+      "id": "phase8a_fast",
+      "phase": 8,
       "icon": "🧠",
-      "priority": 22,
-      "question_fr": "Traumatisme crânien — perte de conscience, vomissements, pupilles?",
-      "question_darija": "واش غاب عنده الوعي؟ واش كيتقيأ؟ واش الحدقتين ديالو متساويتين؟",
-      "speak_darija_patient": "واش غبت عن الوعي ولو ثواني؟ واش قيتي؟ واش عندك صداع شديد؟",
-      "speak_darija_companion": "واش غاب عنده الوعي ولو ثواني؟ واش تقيأ؟ شوف العينين: واش الحدقتين متساويتين؟",
-      "listen_for": {
-        "severe": {
-          "keywords_darija": ["غاب", "فقد الوعي", "تقيأ", "كيتقيأ", "مساويش", "صداع شديد", "ما يتكلمش"],
-          "keywords_fr": ["perte conscience", "vomit", "inégales", "céphalée", "ne parle plus"],
-          "keywords_arabe": ["فقد وعيه", "تقيأ", "غير متساويتين", "صداع شديد"],
-          "keywords_tamazight": ["ifakk", "ixshil"],
-          "result": {
-            "level": "RED",
-            "label_fr": "Traumatisme crânien grave — Suspicion hémorragie cérébrale",
-            "label_darija": "رضة الراس خطيرة — خطر نزيف في الدماغ",
-            "confidence": 1.0,
-            "instructions_fr": ["Appeler le 15 immédiatement", "Ne pas mobiliser", "Maintenir axe tête-cou-tronc", "Ne rien donner à boire"],
-            "instructions_darija": ["عيطو للـ 15 دابا", "ما تحركوهش أبداً", "خليو الراس و الرقبة و الظهر ف خط واحد", "ما تعطيوهش ماء"],
-            "speak_result_darija": "خطر على الدماغ! عيطو للـ 15 دابا! ما تحركوهش أبداً! خليو الراس و الرقبة و الظهر ف خط واحد.",
-            "alert_samu": true,
-            "sms_template": "🔴 URGENCE EXTRÊME\nTraumatisme crânien grave\n{profil}\nGPS: {gps}\nCentre: {centre}\nHeure: {time}"
-          }
+      "question_darija_patient": "واش وجه مائل من جهة؟ ولا ذراع ما كيتحركش؟ ولا ما كيقدرش يهضر مزيان؟",
+      "question_darija_companion": "واش وجه مائل من جهة؟ ولا ذراع ما كيتحركش؟ ولا ما كيقدرش يهضر مزيان؟",
+      "buttons": [
+        {
+          "label": "إيه، واحد من هاد الأشياء كاين",
+          "value": "yes",
+          "next": "__END__",
+          "color_key": "red",
+          "triggerRed": true,
+          "instructions_darija": "قلسوه، ما تعطيوهش لا ماكلة لا ماء. تحفظو الوقت فين بدا. للسبيطار فورا.",
+          "keywords_darija": ["يه", "واه", "وجه مائل", "ذراع", "ما كيهضرش"]
         },
-        "mild": {
-          "keywords_darija": ["شوية", "صداع خفيف", "ما غيبش", "عادي"],
-          "keywords_fr": ["légère", "pas de perte", "normale"],
-          "keywords_arabe": ["بسيطة", "لم يفقد وعيه"],
-          "keywords_tamazight": ["imzziy"],
-          "result": {
-            "level": "ORANGE",
-            "label_fr": "Traumatisme crânien léger — Surveillance 24h nécessaire",
-            "label_darija": "رضة الراس خفيفة — محتاجة مراقبة",
-            "confidence": 0.85,
-            "instructions_fr": ["Urgences pour scanner", "Surveiller toutes les 2h", "Réveiller la nuit", "Retour urgences si aggravation"],
-            "instructions_darija": ["روحو للبيطار يديرو سكانير", "راقبوه كل ساعتين", "صحيوه الليل", "إلا تزاد حالو رجعو فوراً"],
-            "speak_result_darija": "الرضة خفيفة بصح محتاجة فحص. روحو للبيطار يديرو سكانير. راقبوه كل ساعتين الليلة.",
-            "alert_samu": false,
-            "sms_template": null
-          }
+        {
+          "label": "لا، كلشي عادي",
+          "value": "no",
+          "next": "__END__",
+          "color_key": "green",
+          "keywords_darija": ["لا", "عادي", "مزيان", "كلشي بخير"]
         }
-      }
+      ]
     },
 
     {
-      "id": "trauma_spine",
-      "category": "trauma",
+      "id": "phase8b_trauma_type",
+      "phase": 8,
+      "icon": "🤕",
+      "question_darija_patient": "كيفاش وقعات الحادثة؟",
+      "question_darija_companion": "كيفاش وقعات الحادثة؟",
+      "buttons": [
+        {
+          "label": "طيحة / صدمة",
+          "value": "fall",
+          "next": "phase8b_head",
+          "color_key": "orange",
+          "keywords_darija": ["طيحة", "صدمة", "دار", "سقط", "طاح"]
+        },
+        {
+          "label": "حرقة",
+          "value": "burn",
+          "next": "phase8b_burn_type",
+          "color_key": "red",
+          "keywords_darija": ["حرقة", "نار", "ماء سخون", "كيميائي"]
+        },
+        {
+          "label": "جرح / قطع",
+          "value": "cut",
+          "next": "phase8b_bleeding_speed",
+          "color_key": "orange",
+          "keywords_darija": ["جرح", "قطع", "دم", "سكين", "سلاح"]
+        }
+      ]
+    },
+
+    {
+      "id": "phase8b_burn_type",
+      "phase": 8,
+      "icon": "🔥",
+      "question_darija_patient": "بشنو كانت الحرقة؟",
+      "question_darija_companion": "بشنو كانت الحرقة؟",
+      "buttons": [
+        {
+          "label": "نار / ماء سخون",
+          "value": "thermal",
+          "next": "__BODY_MAP__",
+          "color_key": "orange",
+          "keywords_darija": ["نار", "ماء سخون", "حرارة"]
+        },
+        {
+          "label": "كيميائي / حامض",
+          "value": "chemical",
+          "next": "__BODY_MAP__",
+          "color_key": "red",
+          "keywords_darija": ["كيميائي", "حامض", "مادة"]
+        },
+        {
+          "label": "كهربا",
+          "value": "electrical",
+          "next": "__BODY_MAP__",
+          "color_key": "red",
+          "keywords_darija": ["كهربا", "كهرباء", "صعقة"]
+        }
+      ]
+    },
+
+    {
+      "id": "phase8b_head",
+      "phase": 8,
+      "icon": "🤕",
+      "question_darija_patient": "واش طاح على راسو؟ واش فقد الوعي؟",
+      "question_darija_companion": "واش طاح على راسو؟ واش فقد الوعي؟",
+      "buttons": [
+        {
+          "label": "إيه",
+          "value": "yes",
+          "next": "phase8b_spine",
+          "color_key": "red",
+          "triggerRed": true,
+          "instructions_darija": "صدمة ف الراس! ما تحركوهش إلا كان ضروري. شوفو واش كيتنفس. للسبيطار فورا.",
+          "keywords_darija": ["يه", "واه", "على الراس", "فقد الوعي", "راسو"]
+        },
+        {
+          "label": "لا",
+          "value": "no",
+          "next": "phase8b_spine",
+          "color_key": "green",
+          "keywords_darija": ["لا", "لالا", "ماشي"]
+        }
+      ]
+    },
+
+    {
+      "id": "phase8b_spine",
+      "phase": 8,
       "icon": "🦴",
-      "priority": 23,
-      "question_fr": "Douleur cervicale ou dorsale avec déficit sensitif/moteur?",
-      "question_darija": "واش كاين وجع ف الرقبة ولا الضهر مع خدر ولا ضعف ف الأطراف؟",
-      "speak_darija_patient": "واش كاين وجع ف الرقبة أو الضهر؟ واش كاين خدر ف الأطراف؟",
-      "speak_darija_companion": "واش كاين وجع ف الرقبة أو الضهر؟ واش الأطراف فيها خدر أو ما يتحركوش؟",
-      "listen_for": {
-        "spinal_injury": {
-          "keywords_darija": ["يه", "واه", "خدر", "ضعف", "ما يتحركش", "تنميل"],
-          "keywords_fr": ["oui", "engourdissement", "faiblesse", "paralysie", "ne bouge pas"],
-          "keywords_arabe": ["نعم", "خدر", "ضعف", "شلل"],
-          "keywords_tamazight": ["ih", "tagmamt"],
-          "result": {
-            "level": "RED",
-            "label_fr": "Suspicion lésion médullaire — Ne pas mobiliser",
-            "label_darija": "خطر إصابة النخاع الشوكي — ما تحركوهش أبداً",
-            "confidence": 1.0,
-            "instructions_fr": ["Appeler le 15 immédiatement", "Ne pas mobiliser du tout", "Immobiliser tête manuellement", "Attendre les secours"],
-            "instructions_darija": ["عيطو للـ 15 دابا", "ما تحركوهش أبداً", "تبتو الراس باليدين", "ستناو المساعدة"],
-            "speak_result_darija": "خطر على النخاع! ما تحركوهش أبداً! عيطو للـ 15 دابا. تبتو الراس باليدين. ستناو الإسعاف.",
-            "alert_samu": true,
-            "sms_template": "🔴 URGENCE EXTRÊME\nSuspicion lésion médullaire — NE PAS MOBILISER\n{profil}\nGPS: {gps}\nCentre: {centre}\nHeure: {time}"
-          }
+      "question_darija_patient": "واش عندو وجع ف الظهر ولا ف العنق؟ واش ما قدرش يحرك رجليه؟",
+      "question_darija_companion": "واش عندو وجع ف الظهر ولا ف العنق؟ واش ما قدرش يحرك رجليه؟",
+      "buttons": [
+        {
+          "label": "إيه",
+          "value": "yes",
+          "next": "__END__",
+          "color_key": "red",
+          "triggerRed": true,
+          "instructions_darija": "ما تحركوهش خالص! شي حاجة صابت الظهر أو العنق. ستناو المساعدة الطبية.",
+          "keywords_darija": ["يه", "واه", "الظهر", "العنق", "ما كيتحركش"]
         },
-        "no_deficit": {
-          "keywords_darija": ["لا", "ما كاين والو", "عادي", "غير وجع"],
-          "keywords_fr": ["non", "douleur seulement", "normal"],
-          "keywords_arabe": ["لا", "ألم فقط"],
-          "keywords_tamazight": ["ala"],
-          "next": "trauma_fracture"
+        {
+          "label": "لا",
+          "value": "no",
+          "next": "__END__",
+          "color_key": "green",
+          "keywords_darija": ["لا", "لالا", "ماشي"]
         }
-      }
+      ]
     },
 
     {
-      "id": "trauma_fracture",
-      "category": "trauma",
-      "icon": "🦴",
-      "priority": 24,
-      "question_fr": "Y a-t-il une déformation visible ou un os visible?",
-      "question_darija": "واش كاينة تشويه ف الشكل ولا العظم ظاهر؟",
-      "speak_darija_patient": "واش الشكل ديال اليد ولا الرجل متغير؟ واش العظم ظاهر؟",
-      "speak_darija_companion": "شوف المنطقة: واش الشكل متغير؟ واش العظم ظاهر من الجلد؟",
-      "listen_for": {
-        "open_fracture": {
-          "keywords_darija": ["يه", "واه", "ظاهر", "خارج", "العظم بين", "جرح كبير"],
-          "keywords_fr": ["oui", "visible", "sort", "ouvert", "fracture ouverte"],
-          "keywords_arabe": ["نعم", "ظاهر", "كسر مفتوح"],
-          "keywords_tamazight": ["ih", "iban"],
-          "result": {
-            "level": "RED",
-            "label_fr": "Fracture ouverte — Urgence chirurgicale",
-            "label_darija": "كسر مفتوح — طوارئ جراحية",
-            "confidence": 1.0,
-            "instructions_fr": ["Appeler le 15 immédiatement", "Couvrir avec linge propre", "Ne pas réduire", "Immobiliser"],
-            "instructions_darija": ["عيطو للـ 15 دابا", "غطوا بقماش نظيف", "ما تحاولوش تعدلوه", "تبتو الطرف كما هو"],
-            "speak_result_darija": "كسر خطير! عيطو للـ 15 دابا. غطوا بقماش نظيف. ما تحاولوش تعدلوه. تبتو الطرف كما هو.",
-            "alert_samu": true,
-            "sms_template": "🔴 URGENCE EXTRÊME\nFracture ouverte\n{profil}\nGPS: {gps}\nCentre: {centre}\nHeure: {time}"
-          }
-        },
-        "closed_fracture": {
-          "keywords_darija": ["يه", "واه", "متغير", "مشيح", "ما يتحركش", "ما ظاهرش العظم"],
-          "keywords_fr": ["déformé", "gonflé", "ne bouge pas", "fermée"],
-          "keywords_arabe": ["مشوه", "منتفخ", "كسر مغلق"],
-          "keywords_tamazight": ["ih", "irsif"],
-          "result": {
-            "level": "ORANGE",
-            "label_fr": "Fracture fermée probable — Immobilisation et urgences",
-            "label_darija": "كسر مغلق محتمل — تثبيت و بيطار",
-            "confidence": 0.9,
-            "instructions_fr": ["Immobiliser avec attelle", "Glace enveloppée", "Aller aux urgences"],
-            "instructions_darija": ["تبتو الطرف بشد خفيف", "ضعو جليد مغطي", "روحو للبيطار"],
-            "speak_result_darija": "محتمل كسر. تبتو الطرف بلا تحريك. ضعو جليد مغطي بقماش. روحو للبيطار.",
-            "alert_samu": false,
-            "sms_template": null
-          }
-        }
-      }
-    },
-
-    {
-      "id": "trauma_hemorrhage",
-      "category": "trauma",
+      "id": "phase8b_bleeding_speed",
+      "phase": 8,
       "icon": "🩸",
-      "priority": 25,
-      "question_fr": "Y a-t-il un saignement artériel pulsatile?",
-      "question_darija": "واش الدم كيخرج بقوة و بنبضات؟",
-      "speak_darija_patient": "واش الدم كيخرج بقوة كيفاش الضخ؟",
-      "speak_darija_companion": "شوف الجرح: واش الدم كيخرج بقوة و بنبضات؟",
-      "listen_for": {
-        "arterial": {
-          "keywords_darija": ["يه", "واه", "بقوة", "بنبضات", "كتير جداً", "أحمر فاتح"],
-          "keywords_fr": ["oui", "jaillit", "pulsatile", "fort", "rouge vif"],
-          "keywords_arabe": ["نعم", "ينبض", "بقوة", "أحمر فاتح"],
-          "keywords_tamazight": ["ih", "b tazgzawt"],
-          "result": {
-            "level": "RED",
-            "label_fr": "Hémorragie artérielle — Garrot immédiat",
-            "label_darija": "نزيف شرياني — اربطوا دابا",
-            "confidence": 1.0,
-            "instructions_fr": ["Poser garrot 5 cm au-dessus", "Marquer heure du garrot", "Appeler le 15 immédiatement"],
-            "instructions_darija": ["اربطو بشدة 5 سم فوق الجرح", "حفظو وقت الربط", "عيطو للـ 15 دابا"],
-            "speak_result_darija": "نزيف خطير! اربطو بشدة 5 سم فوق الجرح دابا! حفظو وقت الربط. عيطو للـ 15 دابا.",
-            "alert_samu": true,
-            "sms_template": "🔴 URGENCE EXTRÊME\nHémorragie artérielle — garrot posé à {time}\n{profil}\nGPS: {gps}\nCentre: {centre}\nHeure: {time}"
-          }
+      "question_darija_patient": "واش الدم كيخرج بقوة بحال النبضة؟",
+      "question_darija_companion": "واش الدم كيخرج بقوة بحال النبضة؟",
+      "buttons": [
+        {
+          "label": "إيه، بقوة",
+          "value": "arterial",
+          "next": "__END__",
+          "color_key": "red",
+          "triggerRed": true,
+          "instructions_darija": "عيطو بضغط قوي على الجرح. إلا ف اليد أو الرجل: عيطو الكاروط 5 سم فوق الجرح.",
+          "keywords_darija": ["يه", "بقوة", "كيشط", "بحال النبضة"]
         },
-        "venous": {
-          "keywords_darija": ["لا", "بشوية", "أحمر غامق"],
-          "keywords_fr": ["non", "lent", "rouge foncé"],
-          "keywords_arabe": ["لا", "بطيء", "أحمر داكن"],
-          "keywords_tamazight": ["ala"],
-          "next": "abc_circulation"
+        {
+          "label": "لا، ماشي قوي",
+          "value": "venous",
+          "next": "__END__",
+          "color_key": "orange",
+          "keywords_darija": ["لا", "ماشي قوي", "شوية"]
         }
-      }
+      ]
     },
 
     {
-      "id": "mat_contractions",
-      "category": "maternity",
-      "icon": "🤰",
-      "priority": 26,
-      "question_fr": "Y a-t-il des contractions? Régulières?",
-      "question_darija": "واش كاينة تقلصات؟ واش منتظمة؟",
-      "speak_darija_patient": "واش كاينة تقلصات ف البطن؟ واش منتظمة و كيجيو كل شحال؟",
-      "speak_darija_companion": "واش كاينة تقلصات ف البطن ديالها؟ واش منتظمة؟",
-      "listen_for": {
-        "regular": {
-          "keywords_darija": ["يه", "واه", "كيجيو", "منتظمة", "كل دقايق", "كثيرة"],
-          "keywords_fr": ["oui", "régulières", "toutes les", "rapprochées"],
-          "keywords_arabe": ["نعم", "منتظمة", "كل دقائق"],
-          "keywords_tamazight": ["ih"],
-          "next": "mat_bleeding"
-        },
-        "no_contractions": {
-          "keywords_darija": ["لا", "ما كاين والو", "شوية"],
-          "keywords_fr": ["non", "pas de contractions", "légères"],
-          "keywords_arabe": ["لا", "لا تقلصات"],
-          "keywords_tamazight": ["ala"],
-          "next": "mat_preeclampsia"
-        }
-      }
-    },
-
-    {
-      "id": "mat_bleeding",
-      "category": "maternity",
-      "icon": "🩸",
-      "priority": 27,
-      "question_fr": "Y a-t-il des saignements? Quantité?",
-      "question_darija": "واش كاين دم؟ شحال ف الكمية؟",
-      "speak_darija_patient": "واش كاين شي دم؟ شحال ف الكمية؟",
-      "speak_darija_companion": "واش كاين شي دم؟ شحال ف الكمية؟",
-      "listen_for": {
-        "heavy": {
-          "keywords_darija": ["يه", "واه", "بزاف", "كتير", "حمار"],
-          "keywords_fr": ["oui", "beaucoup", "abondant"],
-          "keywords_arabe": ["نعم", "كثير", "غزير"],
-          "keywords_tamazight": ["ih", "bezzaf"],
-          "result": {
-            "level": "RED",
-            "label_fr": "Hémorragie obstétricale grave",
-            "label_darija": "نزيف حمل خطير — طوارئ فورية",
-            "confidence": 1.0,
-            "instructions_fr": ["Appeler le 15 immédiatement", "Allonger jambes surélevées"],
-            "instructions_darija": ["عيطو للـ 15 دابا", "نضجوها و رفعو الرجلين"],
-            "speak_result_darija": "خطر عليها! عيطو للـ 15 دابا. نضجوها و رفعو الرجلين.",
-            "alert_samu": true,
-            "sms_template": "🔴 URGENCE EXTRÊME\nHémorragie obstétricale\n{profil} enceinte\nGPS: {gps}\nCentre: {centre}\nHeure: {time}"
-          }
-        },
-        "light": {
-          "keywords_darija": ["شوية", "خفيف", "قطرات"],
-          "keywords_fr": ["peu", "léger", "traces"],
-          "keywords_arabe": ["قليل", "خفيف"],
-          "keywords_tamazight": ["imzziy"],
-          "next": "mat_preeclampsia"
-        }
-      }
-    },
-
-    {
-      "id": "mat_preeclampsia",
-      "category": "maternity",
-      "icon": "⚠️",
-      "priority": 28,
-      "question_fr": "Céphalées violentes et troubles visuels?",
-      "question_darija": "واش كاين صداع شديد و مشاكل في الرؤية؟",
-      "speak_darija_patient": "واش عندك صداع شديد و كتشوف غير مزيان؟",
-      "speak_darija_companion": "واش عندها صداع شديد و مشاكل في الرؤية؟",
-      "listen_for": {
-        "yes": {
-          "keywords_darija": ["يه", "واه", "صداع", "ما تشوفش", "غيمة", "ضباب", "شديد"],
-          "keywords_fr": ["oui", "maux de tête", "vision", "trouble", "sévère"],
-          "keywords_arabe": ["نعم", "صداع شديد", "اضطراب رؤية"],
-          "keywords_tamazight": ["ih"],
-          "next": "mat_convulsions"
-        },
-        "no": {
-          "keywords_darija": ["لا", "ما كاين والو"],
-          "keywords_fr": ["non"],
-          "keywords_arabe": ["لا"],
-          "keywords_tamazight": ["ala"],
-          "next": "mat_fetal_movement"
-        }
-      }
-    },
-
-    {
-      "id": "mat_convulsions",
-      "category": "maternity",
-      "icon": "⚡",
-      "priority": 29,
-      "question_fr": "Y a-t-il des convulsions?",
-      "question_darija": "واش كاينة تشنجات؟",
-      "speak_darija_patient": "واش عندك تشنجات ف الجسم؟",
-      "speak_darija_companion": "واش عندها تشنجات ف الجسم؟",
-      "listen_for": {
-        "yes": {
-          "keywords_darija": ["يه", "واه", "تشنجات", "ارتجاج", "تتحرك"],
-          "keywords_fr": ["oui", "convulsions", "crises", "spasmes"],
-          "keywords_arabe": ["نعم", "تشنجات", "نوبة"],
-          "keywords_tamazight": ["ih"],
-          "result": {
-            "level": "RED",
-            "label_fr": "Éclampsie — Urgence vitale maternelle",
-            "label_darija": "تشنجات الحمل — خطر على حياة الأم",
-            "confidence": 1.0,
-            "instructions_fr": ["Appeler le 15 immédiatement", "Position latérale de sécurité", "Ne rien mettre en bouche", "Obscurité et silence"],
-            "instructions_darija": ["عيطو للـ 15 دابا", "حطوها على جانبها", "ما تحطوش ولا حاجة ف الفم", "مظلم و صامت"],
-            "speak_result_darija": "خطر على حياتها! عيطو للـ 15 دابا دابا! حطوها على جانبها. مظلم و صامت. ما تحطوش ولا حاجة ف الفم.",
-            "alert_samu": true,
-            "sms_template": "🔴 URGENCE EXTRÊME\nÉclampsie — Convulsions\n{profil} enceinte\nGPS: {gps}\nCentre: {centre}\nHeure: {time}"
-          }
-        },
-        "no": {
-          "keywords_darija": ["لا", "ما كاين والو"],
-          "keywords_fr": ["non"],
-          "keywords_arabe": ["لا"],
-          "keywords_tamazight": ["ala"],
-          "result": {
-            "level": "RED",
-            "label_fr": "Pré-éclampsie sévère — Urgence obstétricale",
-            "label_darija": "تسمم الحمل — طوارئ فورية",
-            "confidence": 0.95,
-            "instructions_fr": ["Appeler le 15 immédiatement", "Repos strict", "Ne rien donner à boire"],
-            "instructions_darija": ["عيطو للـ 15 دابا", "راحة تامة", "ما تعطيوهاش ماء"],
-            "speak_result_darija": "خطر تسمم الحمل! عيطو للـ 15 دابا. راحة تامة. ما تعطيوهاش ماء.",
-            "alert_samu": true,
-            "sms_template": "🔴 URGENCE EXTRÊME\nPré-éclampsie sévère\n{profil} enceinte\nGPS: {gps}\nCentre: {centre}\nHeure: {time}"
-          }
-        }
-      }
-    },
-
-    {
-      "id": "mat_labor",
-      "category": "maternity",
-      "icon": "⏱️",
-      "priority": 30,
-      "question_fr": "Travail en cours depuis plus de 12h?",
-      "question_darija": "واش الولادة كتجري مند أكتر من 12 ساعة؟",
-      "speak_darija_patient": "مند امتى بدات تتألمي؟ أكتر من 12 ساعة؟",
-      "speak_darija_companion": "مند امتى بدا الوجع ديالها؟ أكتر من 12 ساعة؟",
-      "listen_for": {
-        "prolonged": {
-          "keywords_darija": ["يه", "واه", "12 ساعة", "نص نهار", "من الصبح", "كتير"],
-          "keywords_fr": ["oui", "12 heures", "depuis ce matin", "longtemps"],
-          "keywords_arabe": ["نعم", "12 ساعة", "منذ الصباح"],
-          "keywords_tamazight": ["ih"],
-          "result": {
-            "level": "RED",
-            "label_fr": "Dystocie — Travail prolongé > 12h — Urgence obstétricale",
-            "label_darija": "عسر الولادة — أكتر من 12 ساعة — خطر",
-            "confidence": 1.0,
-            "instructions_fr": ["Appeler le 15 immédiatement", "Transporter à la maternité"],
-            "instructions_darija": ["عيطو للـ 15 دابا", "ديوها للمستشفى فوراً"],
-            "speak_result_darija": "الولادة متأخرة جداً! خطر على الأم و الجنين. عيطو للـ 15 دابا. ديوها للمستشفى فوراً.",
-            "alert_samu": true,
-            "sms_template": "🔴 URGENCE EXTRÊME\nDystocie — travail >12h\n{profil} enceinte\nGPS: {gps}\nCentre: {centre}\nHeure: {time}"
-          }
-        },
-        "normal": {
-          "keywords_darija": ["لا", "شوية", "ساعتين", "ثلاث ساعات"],
-          "keywords_fr": ["non", "récent", "quelques heures"],
-          "keywords_arabe": ["لا", "بضع ساعات"],
-          "keywords_tamazight": ["ala"],
-          "next": "mat_fetal_movement"
-        }
-      }
-    },
-
-    {
-      "id": "mat_fetal_movement",
-      "category": "maternity",
-      "icon": "👶",
-      "priority": 31,
-      "question_fr": "Les mouvements du bébé sont-ils absents?",
-      "question_darija": "واش الجنين كيتحرك؟",
-      "speak_darija_patient": "واش حسيتي بالجنين كيتحرك من البارح؟",
-      "speak_darija_companion": "واش الجنين كيتحرك؟",
-      "listen_for": {
-        "absent": {
-          "keywords_darija": ["لا", "ما تحركش", "ما حسيتش", "ساكن"],
-          "keywords_fr": ["non", "ne bouge pas", "absent", "immobile"],
-          "keywords_arabe": ["لا", "لا يتحرك", "ساكن"],
-          "keywords_tamazight": ["ala"],
-          "result": {
-            "level": "RED",
-            "label_fr": "Mouvements fœtaux absents — Urgence obstétricale",
-            "label_darija": "الجنين ما كيتحركش — طوارئ فورية",
-            "confidence": 0.95,
-            "instructions_fr": ["Appeler le 15 immédiatement", "Allonger sur le côté gauche"],
-            "instructions_darija": ["عيطو للـ 15 دابا", "نضجوها على الجانب الأيسر"],
-            "speak_result_darija": "خطر! الجنين ما كيتحركش. عيطو للـ 15 دابا. نضجوها على الجانب الأيسر.",
-            "alert_samu": true,
-            "sms_template": "🔴 URGENCE EXTRÊME\nMouvements fœtaux absents\n{profil} enceinte\nGPS: {gps}\nCentre: {centre}\nHeure: {time}"
-          }
-        },
-        "present": {
-          "keywords_darija": ["يه", "واه", "كيتحرك", "حسيت"],
-          "keywords_fr": ["oui", "bouge", "sent"],
-          "keywords_arabe": ["نعم", "يتحرك"],
-          "keywords_tamazight": ["ih"],
-          "result": {
-            "level": "ORANGE",
-            "label_fr": "Grossesse à surveiller — Consultation prénatale urgente",
-            "label_darija": "حمل محتاج مراقبة — مشاورة طبيب الحمل",
-            "confidence": 0.8,
-            "instructions_fr": ["Consultation obstétricale dans les 4h", "Repos", "Surveiller les contractions"],
-            "instructions_darija": ["روحو لطبيب الحمل ف 4 ساعات", "راحة", "راقبو التقلصات"],
-            "speak_result_darija": "الحمل محتاج مراقبة. روحو لطبيب الحمل ف 4 ساعات. راحة تامة. راقبو التقلصات.",
-            "alert_samu": false,
-            "sms_template": null
-          }
-        }
-      }
-    },
-
-    {
-      "id": "ped_breathing",
-      "category": "pediatric",
-      "icon": "👶",
-      "priority": 32,
-      "question_fr": "L'enfant présente-t-il une cyanose ou des tirages?",
-      "question_darija": "واش الدري عندو زرقة ولا كيشد بطنو للتنفس؟",
-      "speak_darija_patient": "واش الشفاف ديالو زرقين؟ واش كيشد بطنو كيتنفس؟",
-      "speak_darija_companion": "شوف الدري: واش الشفاف زرقين؟ واش كيشد بطنو كيتنفس؟",
-      "listen_for": {
-        "severe": {
-          "keywords_darija": ["يه", "واه", "زرق", "كيشد", "بطن", "صعيب"],
-          "keywords_fr": ["oui", "bleu", "tire", "difficile"],
-          "keywords_arabe": ["نعم", "أزرق", "يشد بطنه"],
-          "keywords_tamazight": ["ih", "azggar"],
-          "result": {
-            "level": "RED",
-            "label_fr": "Détresse respiratoire pédiatrique — Urgence vitale",
-            "label_darija": "ضيق تنفس عند الدري — خطر مباشر",
-            "confidence": 1.0,
-            "instructions_fr": ["Appeler le 15 immédiatement", "Position assise", "Calmer l'enfant"],
-            "instructions_darija": ["عيطو للـ 15 دابا", "جلسوه", "هدوا الدري"],
-            "speak_result_darija": "خطر على الدري! عيطو للـ 15 دابا. جلسوه مزيان. هدوه.",
-            "alert_samu": true,
-            "sms_template": "🔴 URGENCE EXTRÊME\nDétresse respiratoire pédiatrique\n{profil} enfant\nGPS: {gps}\nCentre: {centre}\nHeure: {time}"
-          }
-        },
-        "mild": {
-          "keywords_darija": ["لا", "شوية", "بصح عادي"],
-          "keywords_fr": ["non", "légère", "normal"],
-          "keywords_arabe": ["لا", "بسيط"],
-          "keywords_tamazight": ["ala"],
-          "next": "ped_dehydration"
-        }
-      }
-    },
-
-    {
-      "id": "ped_dehydration",
-      "category": "pediatric",
-      "icon": "💧",
-      "priority": 33,
-      "question_fr": "L'enfant présente-t-il des signes de déshydratation?",
-      "question_darija": "واش العينين ديالو غارقين؟ واش كيرفض يشرب؟",
-      "speak_darija_patient": "واش العينين ديال الدري غارقين للداخل؟ واش كيبكي بلا دموع؟ واش كيرفض يشرب؟",
-      "speak_darija_companion": "شوف الدري: واش العينين غارقين؟ واش كيبكي بلا دموع؟",
-      "listen_for": {
-        "severe": {
-          "keywords_darija": ["يه", "واه", "غارقين", "بلا دموع", "يرفض", "ما كيشربش"],
-          "keywords_fr": ["oui", "enfoncés", "sans larmes", "refuse", "ne boit pas"],
-          "keywords_arabe": ["نعم", "غائرة", "بلا دموع", "يرفض"],
-          "keywords_tamazight": ["ih"],
-          "result": {
-            "level": "RED",
-            "label_fr": "Déshydratation sévère pédiatrique",
-            "label_darija": "جفاف شديد عند الدري — خطر مباشر",
-            "confidence": 1.0,
-            "instructions_fr": ["Appeler le 15 immédiatement", "Ne pas forcer à boire", "Perfusion IV nécessaire"],
-            "instructions_darija": ["عيطو للـ 15 دابا", "ما تجبروهش يشرب", "محتاج بوسطة ف الوريد"],
-            "speak_result_darija": "الدري فيه جفاف خطير. عيطو للـ 15 دابا. ما تجبروهش يشرب. محتاج بوسطة.",
-            "alert_samu": true,
-            "sms_template": "🔴 URGENCE EXTRÊME\nDéshydratation pédiatrique sévère\n{profil} enfant\nGPS: {gps}\nCentre: {centre}\nHeure: {time}"
-          }
-        },
-        "mild": {
-          "keywords_darija": ["لا", "كيشرب", "عادي"],
-          "keywords_fr": ["non", "boit", "normal"],
-          "keywords_arabe": ["لا", "يشرب"],
-          "keywords_tamazight": ["ala"],
-          "next": "ped_fever"
-        }
-      }
-    },
-
-    {
-      "id": "ped_fever",
-      "category": "pediatric",
+      "id": "phase8c_fever",
+      "phase": 8,
       "icon": "🌡️",
-      "priority": 34,
-      "question_fr": "Fièvre > 39°C avec convulsions chez l'enfant?",
-      "question_darija": "واش السخانة فوق 39 درجة مع تشنجات؟",
-      "speak_darija_patient": "شحال درجة السخانة؟ واش كانت شي تشنجات؟",
-      "speak_darija_companion": "شحال درجة السخانة؟ واش كانت تشنجات؟",
-      "listen_for": {
-        "febrile_seizure": {
-          "keywords_darija": ["يه", "واه", "تشنجات", "39", "40", "شديدة"],
-          "keywords_fr": ["oui", "convulsions", "39", "40", "forte"],
-          "keywords_arabe": ["نعم", "تشنجات", "39", "40"],
-          "keywords_tamazight": ["ih"],
-          "result": {
-            "level": "RED",
-            "label_fr": "Convulsions fébriles — Urgence pédiatrique",
-            "label_darija": "تشنجات السخانة عند الدري — خطر",
-            "confidence": 1.0,
-            "instructions_fr": ["Appeler le 15 immédiatement", "Position latérale", "Ne rien mettre en bouche", "Temps de crise noté"],
-            "instructions_darija": ["عيطو للـ 15 دابا", "حطوه على جانبه", "ما تحطوش ولا حاجة ف الفم", "حسبو الوقت"],
-            "speak_result_darija": "خطر على الدري! عيطو للـ 15 دابا. حطوه على جانبه. ما تحطوش ولا حاجة ف الفم. حسبو الوقت.",
-            "alert_samu": true,
-            "sms_template": "🔴 URGENCE EXTRÊME\nConvulsions fébriles pédiatriques\n{profil} enfant — T°: {temp}\nGPS: {gps}\nCentre: {centre}\nHeure: {time}"
-          }
+      "question_darija_patient": "شحال هي السخانة تقريبا؟",
+      "question_darija_companion": "شحال هي السخانة تقريبا؟",
+      "buttons": [
+        {
+          "label": "خفيفة (أقل من 38.5)",
+          "value": "mild",
+          "next": "__END__",
+          "color_key": "green",
+          "keywords_darija": ["خفيفة", "37", "38", "ما شديدة"]
         },
-        "no_seizure": {
-          "keywords_darija": ["لا", "ما كانش", "بصح سخانة فقط"],
-          "keywords_fr": ["non", "pas de convulsions", "fièvre seulement"],
-          "keywords_arabe": ["لا", "حمى فقط"],
-          "keywords_tamazight": ["ala"],
-          "next": "ped_foreign_body"
+        {
+          "label": "متوسطة (38.5 - 40)",
+          "value": "moderate",
+          "next": "__END__",
+          "color_key": "orange",
+          "keywords_darija": ["متوسطة", "38.5", "39", "40"]
+        },
+        {
+          "label": "كبيرة (فوق 40)",
+          "value": "severe",
+          "next": "phase8c_meningitis",
+          "color_key": "red",
+          "keywords_darija": ["كبيرة", "فوق 40", "41", "42", "شديدة"]
         }
-      }
+      ]
     },
 
     {
-      "id": "ped_foreign_body",
-      "category": "pediatric",
-      "icon": "⚠️",
-      "priority": 35,
-      "question_fr": "L'enfant a-t-il avalé un corps étranger? Cyanose silencieuse?",
-      "question_darija": "واش بلع الدري شي حاجة؟ واش زرق بلا صوت؟",
-      "speak_darija_patient": "واش بلع الدري شي حاجة؟ كيف حبة ولا قطعة؟",
-      "speak_darija_companion": "واش بلع الدري شي حاجة صغيرة؟ واش زرق و ما كيبكيش؟",
-      "listen_for": {
-        "choking": {
-          "keywords_darija": ["يه", "واه", "بلع", "زرق", "ما كيبكيش", "ساكت"],
-          "keywords_fr": ["oui", "avalé", "bleu", "ne pleure pas", "silencieux"],
-          "keywords_arabe": ["نعم", "بلع", "أزرق", "لا يبكي"],
-          "keywords_tamazight": ["ih"],
-          "result": {
-            "level": "RED",
-            "label_fr": "Corps étranger avec cyanose — Heimlich pédiatrique immédiat",
-            "label_darija": "بلع جسم غريب مع زرقة — هيمليك فوراً",
-            "confidence": 1.0,
-            "instructions_fr": ["Manœuvre Heimlich enfant", "Appeler le 15 immédiatement", "5 tapes dans le dos puis 5 compressions thoraciques"],
-            "instructions_darija": ["هيمليك للدري فوراً", "عيطو للـ 15 دابا", "5 ضربات على الظهر ثم 5 ضغطات على الصدر"],
-            "speak_result_darija": "خطر! الدري ما يتنفسش. عيطو للـ 15 دابا. ضربو 5 مرات على ظهره بقوة. ثم اضغطو 5 مرات على الصدر.",
-            "alert_samu": true,
-            "sms_template": "🔴 URGENCE EXTRÊME\nCorps étranger pédiatrique\n{profil} enfant\nGPS: {gps}\nCentre: {centre}\nHeure: {time}"
-          }
+      "id": "phase8c_meningitis",
+      "phase": 8,
+      "icon": "🧠",
+      "question_darija_patient": "واش عندو تصلب ف الرقبة ولا ما يتحمل الضو؟",
+      "question_darija_companion": "واش عندو تصلب ف الرقبة ولا ما يتحمل الضو؟",
+      "buttons": [
+        {
+          "label": "إيه",
+          "value": "yes",
+          "next": "__END__",
+          "color_key": "red",
+          "triggerRed": true,
+          "instructions_darija": "إمكانية التهاب السحايا! ديوه للسبيطار فورا. ما تعطيوهش دوا بوحدكم.",
+          "keywords_darija": ["يه", "تصلب", "ما يتحمل الضو", "الرقبة"]
         },
-        "no": {
-          "keywords_darija": ["لا", "ما بلعش", "عادي"],
-          "keywords_fr": ["non", "rien avalé"],
-          "keywords_arabe": ["لا"],
-          "keywords_tamazight": ["ala"],
-          "next": "fever_severity"
+        {
+          "label": "لا",
+          "value": "no",
+          "next": "__END__",
+          "color_key": "green",
+          "keywords_darija": ["لا", "لالا", "ماشي"]
         }
-      }
+      ]
+    },
+
+    {
+      "id": "phase8d_breathing",
+      "phase": 8,
+      "icon": "🫁",
+      "question_darija_patient": "واش عندو سفير ف الصدر؟ ولا ما يقدرش يكمل كلام بلا تنفس؟",
+      "question_darija_companion": "واش عندو سفير ف الصدر؟ ولا ما يقدرش يكمل كلام بلا تنفس؟",
+      "buttons": [
+        {
+          "label": "إيه",
+          "value": "yes",
+          "next": "phase8d_foreign_body",
+          "color_key": "red",
+          "triggerRed": true,
+          "instructions_darija": "صعوبة تنفس شديدة! قلسوه، حلو ليه الهدوم، و طلبو الإسعاف فورا.",
+          "keywords_darija": ["يه", "سفير", "صعوبة", "ما يقدرش يتكلم"]
+        },
+        {
+          "label": "لا",
+          "value": "no",
+          "next": "phase8d_foreign_body",
+          "color_key": "green",
+          "keywords_darija": ["لا", "لالا", "عادي"]
+        }
+      ]
+    },
+
+    {
+      "id": "phase8d_foreign_body",
+      "phase": 8,
+      "icon": "🍬",
+      "question_darija_patient": "واش ابتلع شي حاجة؟",
+      "question_darija_companion": "واش ابتلع شي حاجة؟",
+      "buttons": [
+        {
+          "label": "إيه",
+          "value": "yes",
+          "next": "__END__",
+          "color_key": "red",
+          "triggerRed": true,
+          "instructions_darija": "5 ضربات ف الظهر + 5 ضغطات ف الكرش. إلا ما كيتنفسش، طلبو الإسعاف فورا.",
+          "keywords_darija": ["يه", "بلع", "ابتلع", "شي حاجة"]
+        },
+        {
+          "label": "لا",
+          "value": "no",
+          "next": "__END__",
+          "color_key": "green",
+          "keywords_darija": ["لا", "لالا", "ماشي"]
+        }
+      ]
+    },
+
+    {
+      "id": "phase8e_dizziness",
+      "phase": 8,
+      "icon": "💫",
+      "question_darija_patient": "واش الدوخة جات فجأة؟ واش ما يقدرش يوقف مزيان؟",
+      "question_darija_companion": "واش الدوخة جات فجأة؟ واش ما يقدرش يوقف مزيان؟",
+      "buttons": [
+        {
+          "label": "إيه، فجأة",
+          "value": "sudden",
+          "next": "phase8e_seizure",
+          "color_key": "red",
+          "keywords_darija": ["فجأة", "دفعة واحدة", "ما توقعش"]
+        },
+        {
+          "label": "شيئا فشيئا",
+          "value": "gradual",
+          "next": "phase8e_seizure",
+          "color_key": "orange",
+          "keywords_darija": ["شيئا فشيئا", "تدريجياً", "شوية شوية"]
+        }
+      ]
+    },
+
+    {
+      "id": "phase8e_seizure",
+      "phase": 8,
+      "icon": "⚡",
+      "question_darija_patient": "واش جاتو كريزة؟",
+      "question_darija_companion": "واش جاتو كريزة؟",
+      "buttons": [
+        {
+          "label": "إيه",
+          "value": "yes",
+          "next": "__END__",
+          "color_key": "red",
+          "triggerRed": true,
+          "instructions_darija": "كريزة! ديروه على الجنب، حميو راسو، ما تديرو والو ف الفم، للسبيطار فورا.",
+          "keywords_darija": ["يه", "كريزة", "تشنج", "جاتو الكريزة"]
+        },
+        {
+          "label": "لا",
+          "value": "no",
+          "next": "__END__",
+          "color_key": "green",
+          "keywords_darija": ["لا", "لالا", "ماشي"]
+        }
+      ]
+    },
+
+    {
+      "id": "phase8f_bite_type",
+      "phase": 8,
+      "icon": "🐍",
+      "question_darija_patient": "شنو تقرصو؟",
+      "question_darija_companion": "شنو تقرصو؟",
+      "buttons": [
+        {
+          "label": "أفعى",
+          "value": "snake",
+          "next": "phase8f_symptoms",
+          "color_key": "red",
+          "keywords_darija": ["أفعى", "حنش", "حية"]
+        },
+        {
+          "label": "عقرب",
+          "value": "scorpion",
+          "next": "phase8f_symptoms",
+          "color_key": "red",
+          "keywords_darija": ["عقرب", "اقرب"]
+        },
+        {
+          "label": "كلب / حيوان آخر",
+          "value": "animal",
+          "next": "phase8f_symptoms",
+          "color_key": "orange",
+          "keywords_darija": ["كلب", "قط", "حيوان", "بيهيمة"]
+        }
+      ]
+    },
+
+    {
+      "id": "phase8f_symptoms",
+      "phase": 8,
+      "icon": "🤢",
+      "question_darija_patient": "واش عندو قيء ولا صعوبة ف التنفس؟",
+      "question_darija_companion": "واش عندو قيء ولا صعوبة ف التنفس؟",
+      "buttons": [
+        {
+          "label": "إيه",
+          "value": "yes",
+          "next": "__END__",
+          "color_key": "red",
+          "triggerRed": true,
+          "instructions_darija": "ما تحركوش البلاصة. ما تمصوش الدم. خلّيوه هادي. للسبيطار.",
+          "keywords_darija": ["يه", "قيء", "يتقيأ", "صعوبة تنفس"]
+        },
+        {
+          "label": "لا",
+          "value": "no",
+          "next": "__END__",
+          "color_key": "green",
+          "keywords_darija": ["لا", "لالا", "ماشي"]
+        }
+      ]
+    },
+
+    {
+      "id": "phase8g_contractions",
+      "phase": 8,
+      "icon": "🤰",
+      "question_darija_patient": "واش عندها الطلق؟ كل شحال دقيقة؟",
+      "question_darija_companion": "واش عندها الطلق؟ كل شحال دقيقة؟",
+      "buttons": [
+        {
+          "label": "لا طلق",
+          "value": "no_contractions",
+          "next": "phase8g_headache",
+          "color_key": "green",
+          "keywords_darija": ["لا", "ما كاين الطلق", "ماشي"]
+        },
+        {
+          "label": "طلق كل +5 دقائق",
+          "value": "contractions_slow",
+          "next": "phase8g_headache",
+          "color_key": "orange",
+          "keywords_darija": ["خمس دقائق", "عشر دقائق", "بعيد"]
+        },
+        {
+          "label": "طلق كل -3 دقائق",
+          "value": "contractions_fast",
+          "next": "phase8g_headache",
+          "color_key": "red",
+          "triggerRed": true,
+          "instructions_darija": "الطلق قريب جدا! ستناو فورا. ما تحركوا كتير. للسبيطار فورا.",
+          "keywords_darija": ["ثلاث دقائق", "دقيقتين", "متقارب", "قريب"]
+        }
+      ]
+    },
+
+    {
+      "id": "phase8g_headache",
+      "phase": 8,
+      "icon": "😫",
+      "question_darija_patient": "واش عندها صداع قوي ولا كتشوف غبّار؟",
+      "question_darija_companion": "واش عندها صداع قوي ولا كتشوف غبّار؟",
+      "buttons": [
+        {
+          "label": "إيه",
+          "value": "yes",
+          "next": "phase8g_seizure",
+          "color_key": "red",
+          "keywords_darija": ["يه", "صداع", "غبار", "ما تشوفش مزيان"]
+        },
+        {
+          "label": "لا",
+          "value": "no",
+          "next": "phase8g_waters",
+          "color_key": "green",
+          "keywords_darija": ["لا", "لالا", "ماشي"]
+        }
+      ]
+    },
+
+    {
+      "id": "phase8g_seizure",
+      "phase": 8,
+      "icon": "⚡",
+      "question_darija_patient": "واش جاتها كريزة؟",
+      "question_darija_companion": "واش جاتها كريزة؟",
+      "buttons": [
+        {
+          "label": "إيه",
+          "value": "yes",
+          "next": "phase8g_waters",
+          "color_key": "red",
+          "triggerRed": true,
+          "instructions_darija": "ديروها على جنبها ليسر، حميو راسها، ما تديرو والو ف الفم، للسبيطار فورا.",
+          "keywords_darija": ["يه", "كريزة", "تشنج"]
+        },
+        {
+          "label": "لا",
+          "value": "no",
+          "next": "phase8g_waters",
+          "color_key": "orange",
+          "keywords_darija": ["لا", "لالا", "ماشي"]
+        }
+      ]
+    },
+
+    {
+      "id": "phase8g_waters",
+      "phase": 8,
+      "icon": "💧",
+      "question_darija_patient": "واش حسات بانطلاق الميه؟ شنو لونها؟",
+      "question_darija_companion": "واش حسات بانطلاق الميه؟ شنو لونها؟",
+      "buttons": [
+        {
+          "label": "لا",
+          "value": "no",
+          "next": "__END__",
+          "color_key": "green",
+          "keywords_darija": ["لا", "ما كاينش"]
+        },
+        {
+          "label": "إيه، صافية",
+          "value": "clear_waters",
+          "next": "__END__",
+          "color_key": "orange",
+          "keywords_darija": ["صافية", "بيضاء", "عادية"]
+        },
+        {
+          "label": "إيه، ملوّنة",
+          "value": "colored_waters",
+          "next": "__END__",
+          "color_key": "red",
+          "triggerRed": true,
+          "instructions_darija": "الميه ملوّنة خطر على الوليد! ديوها للسبيطار فورا.",
+          "keywords_darija": ["ملوّنة", "خضرا", "بنية", "سودا"]
+        }
+      ]
+    },
+
+    {
+      "id": "phase9_child_breathing",
+      "phase": 9,
+      "icon": "👶",
+      "question_darija_patient": "واش شفافو زرقين ولا كيشد النفس بصعوبة؟",
+      "question_darija_companion": "واش شفافو زرقين ولا كيشد النفس بصعوبة؟",
+      "buttons": [
+        {
+          "label": "إيه",
+          "value": "yes",
+          "next": "phase9_child_dehydration",
+          "color_key": "red",
+          "triggerRed": true,
+          "instructions_darija": "صعوبة تنفس عند الدري! خلو راسو ف فوق شوية، طلبو الإسعاف فورا.",
+          "keywords_darija": ["يه", "زرقين", "صعوبة", "يشد النفس"]
+        },
+        {
+          "label": "لا",
+          "value": "no",
+          "next": "phase9_child_dehydration",
+          "color_key": "green",
+          "keywords_darija": ["لا", "لالا", "عادي", "مزيان"]
+        }
+      ]
+    },
+
+    {
+      "id": "phase9_child_dehydration",
+      "phase": 9,
+      "icon": "💧",
+      "question_darija_patient": "واش عينيه داخلين ورافض يشرب الما؟",
+      "question_darija_companion": "واش عينيه داخلين ورافض يشرب الما؟",
+      "buttons": [
+        {
+          "label": "إيه",
+          "value": "yes",
+          "next": "phase9_child_fever",
+          "color_key": "red",
+          "triggerRed": true,
+          "instructions_darija": "جفاف عند الدري! ديرو ليتر ماء فيه 6 معالق سكر و معلقة ملح. عطيوه بالمعلقة.",
+          "keywords_darija": ["يه", "عيون داخلين", "رافض يشرب", "ما يشربش"]
+        },
+        {
+          "label": "لا",
+          "value": "no",
+          "next": "phase9_child_fever",
+          "color_key": "green",
+          "keywords_darija": ["لا", "لالا", "كيشرب", "مزيان"]
+        }
+      ]
+    },
+
+    {
+      "id": "phase9_child_fever",
+      "phase": 9,
+      "icon": "🌡️",
+      "question_darija_patient": "واش جاتو كريزة مع السخانة؟",
+      "question_darija_companion": "واش جاتو كريزة مع السخانة؟",
+      "buttons": [
+        {
+          "label": "إيه",
+          "value": "yes",
+          "next": "phase9_child_foreign_body",
+          "color_key": "red",
+          "triggerRed": true,
+          "instructions_darija": "كريزة مع سخانة عند الدري! ديروه على الجنب، برّدوه بماء فاتر، للسبيطار فورا.",
+          "keywords_darija": ["يه", "كريزة", "تشنج", "مع السخانة"]
+        },
+        {
+          "label": "لا",
+          "value": "no",
+          "next": "phase9_child_foreign_body",
+          "color_key": "green",
+          "keywords_darija": ["لا", "لالا", "ماشي"]
+        }
+      ]
+    },
+
+    {
+      "id": "phase9_child_foreign_body",
+      "phase": 9,
+      "icon": "🍬",
+      "question_darija_patient": "واش بلع شي حاجة؟ واش ما كيتنفسش؟",
+      "question_darija_companion": "واش بلع شي حاجة؟ واش ما كيتنفسش؟",
+      "buttons": [
+        {
+          "label": "إيه",
+          "value": "yes",
+          "next": "__END__",
+          "color_key": "red",
+          "triggerRed": true,
+          "instructions_darija": "5 ضربات ف الظهر + 5 ضغطات ف الكرش. إلا ما كيتنفسش، طلبو الإسعاف فورا.",
+          "keywords_darija": ["يه", "بلع", "ابتلع", "ما يتنفسش"]
+        },
+        {
+          "label": "لا",
+          "value": "no",
+          "next": "__END__",
+          "color_key": "green",
+          "keywords_darija": ["لا", "لالا", "ماشي"]
+        }
+      ]
     }
   ],
 
   "closing_phrases": {
     "red": "ما تخافوش. السبيطار تعلم بالحالة ديالكم. تبعو التعليمات و ستناو المساعدة. أنا هنا معاكم.",
     "orange": "الحالة خصها طبيب ولكن ماشي خطر فوري. تبعو التعليمات و ديوه للطبيب ف أقرب وقت. إلا تزاد عليه رجعو عيطو لي.",
-    "green": "الحمد لله ما كاين حتى خطر دابا. تبعو النصائح اللي عطيتكم. إلا ما تحسنش ف يومين رجعو عيطو لي."
+    "green": "الحمد لله ما كاين حتى خطر دابا. تبعو النصائح اللي عطيتكم. إلا ما تحسنش ف يومين رجعو عيطو لي.",
+    "disclaimer": "هاد النتيجة غير مساعدة للتوجيه. ماشي تشخيص طبي. استشر طبيب للتأكيد."
   }
 }
