@@ -47,12 +47,20 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Triage'>;
 
 const TOTAL_PHASES = 9;
 const FIRST_NODE = 'phase1_interlocutor';
+const BUTTONS_DELAY_MS = 5000; // Show fallback buttons after 5s of silence
 
+// Button color maps — subtle tinted style
 const COLOR_MAP: Record<string, string> = {
   green: COLORS.green,
   orange: COLORS.orange,
   red: COLORS.red,
   primary: COLORS.primary,
+};
+const COLOR_BG_MAP: Record<string, string> = {
+  green: 'rgba(21,128,61,0.12)',
+  orange: 'rgba(194,65,12,0.12)',
+  red: 'rgba(185,28,28,0.14)',
+  primary: 'rgba(20,83,45,0.12)',
 };
 
 const DEFAULT_RUNTIME_PROFILE: RuntimeProfile = {
@@ -67,7 +75,9 @@ const DEFAULT_RUNTIME_PROFILE: RuntimeProfile = {
   bloodThinner: false,
   allergies: false,
   isRecurrent: false,
+  avpuLevel: null,
   _maternity_done: false,
+  _red_skip: false,
 };
 
 function buildPatientProfile(rp: RuntimeProfile, sessionId: string): PatientProfile {
@@ -121,6 +131,8 @@ const TriageScreen: React.FC<Props> = ({ navigation, route }) => {
   const currentButtonsRef  = useRef<TriageButton[]>([]);
   const runtimeProfileRef  = useRef<RuntimeProfile>({ ...DEFAULT_RUNTIME_PROFILE });
   const redDetectedRef     = useRef(false);
+  const isListeningRef     = useRef(false);
+  const buttonsTimerRef    = useRef<ReturnType<typeof setTimeout> | null>(null);
   const waitingForBurnReturn = useRef(false);
   const sessionRef         = useRef(session);
 
@@ -136,12 +148,19 @@ const TriageScreen: React.FC<Props> = ({ navigation, route }) => {
     })
   ).current;
 
+  // ── Timer helpers ─────────────────────────────────────────────────────────
+  const clearButtonsTimer = useCallback(() => {
+    if (buttonsTimerRef.current) {
+      clearTimeout(buttonsTimerRef.current);
+      buttonsTimerRef.current = null;
+    }
+  }, []);
+
   // ── Speak-only helper (no mic) ────────────────────────────────────────────
   const speakOnly = useCallback((text: string, onDone?: () => void) => {
     if (!isMounted.current) return;
     setIndicatorPhase('speaking');
     setSpeaking(true);
-    setShowButtons(false);
     speakWithCallback(text, () => {
       if (!isMounted.current) return;
       setSpeaking(false);
@@ -150,25 +169,36 @@ const TriageScreen: React.FC<Props> = ({ navigation, route }) => {
     });
   }, [setSpeaking]);
 
-  // ── Open / close mic ─────────────────────────────────────────────────────
+  // ── Open mic: voice first, buttons appear after BUTTONS_DELAY_MS ─────────
   const openMic = useCallback(() => {
     if (!isMounted.current) return;
-    setShowButtons(true);
+    isListeningRef.current = true;
+    setShowButtons(false); // Voice is the primary mode — no buttons yet
     setIndicatorPhase('listening');
     setSpeaking(false);
     setListening(true);
     sd.start();
     startListening('ar-MA');
+
+    // Fallback: reveal buttons after 5s if user hasn't spoken
+    buttonsTimerRef.current = setTimeout(() => {
+      if (isMounted.current && isListeningRef.current) {
+        setShowButtons(true);
+      }
+    }, BUTTONS_DELAY_MS);
   }, [setSpeaking, setListening, sd]);
 
+  // ── Close mic ─────────────────────────────────────────────────────────────
   const closeMic = useCallback(() => {
+    isListeningRef.current = false;
+    clearButtonsTimer();
     sd.stop();
     stopListening();
     setListening(false);
     setShowButtons(false);
     setProcessing(true);
     setIndicatorPhase('processing');
-  }, [setListening, setProcessing, sd]);
+  }, [setListening, setProcessing, sd, clearButtonsTimer]);
 
   // ── Forward refs for mutually recursive functions ─────────────────────────
   const speakAndShowButtonsRef = useRef<(nodeId: string) => void>(() => {});
@@ -272,19 +302,23 @@ const TriageScreen: React.FC<Props> = ({ navigation, route }) => {
         isRedDetected: button.triggerRed ?? false,
       });
 
+      // RED flag must be set BEFORE routing so __ABC_DONE__ resolves to __FINISH__
+      // when RED is detected in phases 5-6 (not just AVPU=U)
+      if (button.triggerRed) {
+        redDetectedRef.current = true;
+        setRedDetected(true);
+        setRedBar(true);
+        runtimeProfileRef.current = { ...runtimeProfileRef.current, _red_skip: true };
+      }
+
       const nextId = triageEngine.getNextNodeId(
         nodeId,
         button.value,
         runtimeProfileRef.current,
       );
 
-      // If button has instructions to speak (safety info or RED)
+      // If button has instructions (safety info or RED), speak them first
       if (button.instructions_darija) {
-        if (button.triggerRed) {
-          redDetectedRef.current = true;
-          setRedDetected(true);
-          setRedBar(true);
-        }
         const sess = sessionRef.current;
         speakOnly(button.instructions_darija, () => {
           if (button.triggerRed && sess) {
@@ -329,26 +363,39 @@ const TriageScreen: React.FC<Props> = ({ navigation, route }) => {
       setSpeaking(true);
       speakWithCallback(questionText, () => {
         if (!isMounted.current) return;
+        // Voice first — mic opens, buttons hidden until BUTTONS_DELAY_MS
         openMic();
       });
     };
   });
 
-  // ── STT result ────────────────────────────────────────────────────────────
+  // ── STT result: voice-first, show buttons on no-match ────────────────────
   const handleSTTResultRef = useRef<(raw: string) => void>(() => {});
   useEffect(() => {
     handleSTTResultRef.current = (raw: string) => {
       if (!isMounted.current || !raw.trim()) return;
+
+      // Clear the 5s fallback timer — user has spoken
+      isListeningRef.current = false;
+      clearButtonsTimer();
       sd.reset();
       setTranscript(raw);
-      speakFeedback().catch(() => {});
 
       const matched = triageEngine.matchSTTToButton(raw, currentButtonsRef.current);
       if (matched) {
+        speakFeedback().catch(() => {});
         closeMic();
         handleButtonRef.current(matched);
+      } else {
+        // No keyword match — show buttons and prompt the user
+        stopListening();
+        setShowButtons(true);
+        speakWithCallback('ما فهمتش مزيان، اختار من هاد الجوابات', () => {
+          if (!isMounted.current) return;
+          setIndicatorPhase('listening');
+          startListening('ar-MA'); // Re-open STT alongside the visible buttons
+        });
       }
-      // No match → keep mic open, user can speak again or press a button
     };
   });
 
@@ -380,17 +427,20 @@ const TriageScreen: React.FC<Props> = ({ navigation, route }) => {
     navigation.replace('Companion');
   }, [setSilenceState, setRedDetected, navigation]);
 
-  // ── Button / mic press ────────────────────────────────────────────────────
+  // ── Button press — allowed whenever buttons are visible ───────────────────
   const handleButtonPress = useCallback((button: TriageButton) => {
-    if (indicatorPhase !== 'listening') return;
+    if (!showButtons) return;
+    stopTTS();          // Stop any "ما فهمتش" feedback that may be playing
     sd.reset();
+    isListeningRef.current = false;
+    clearButtonsTimer();
     closeMic();
     handleButtonRef.current(button);
-  }, [indicatorPhase, sd, closeMic]);
+  }, [showButtons, sd, clearButtonsTimer, closeMic]);
 
+  // ── Mic manual tap — restart STT ─────────────────────────────────────────
   const handleMicPress = useCallback(() => {
     if (indicatorPhase !== 'listening') return;
-    // Restart STT on tap (clears buffer and retries)
     stopListening();
     setTimeout(() => {
       if (isMounted.current) startListening('ar-MA');
@@ -423,6 +473,7 @@ const TriageScreen: React.FC<Props> = ({ navigation, route }) => {
       redDetectedRef.current = true;
       setRedDetected(true);
       setRedBar(true);
+      runtimeProfileRef.current = { ...runtimeProfileRef.current, _red_skip: true };
       const instructions = 'برّدو بالماء الفاتر 15 دقيقة، ما تنعلو الهدوم، عيطو للـ 15 دابا!';
       speakOnly(instructions, () => {
         if (sess) triggerRedAlert({ ...sess, classification: 'RED' }).catch(() => {});
@@ -461,6 +512,7 @@ const TriageScreen: React.FC<Props> = ({ navigation, route }) => {
 
     return () => {
       isMounted.current = false;
+      clearButtonsTimer();
       stopTTS();
       stopListening();
       sd.stop();
@@ -475,9 +527,9 @@ const TriageScreen: React.FC<Props> = ({ navigation, route }) => {
     indicatorPhase === 'waiting'   ? 'idle'      : 'disabled';
 
   const hintText =
-    indicatorPhase === 'listening'  ? 'جاوب بالصوت أو اضغط زر...' :
-    indicatorPhase === 'speaking'   ? 'كنهضر...'                   :
-    indicatorPhase === 'processing' ? 'كنفهم...'                    : '';
+    indicatorPhase === 'listening'  ? 'جاوب بالصوت...' :
+    indicatorPhase === 'speaking'   ? 'كنهضر...'       :
+    indicatorPhase === 'processing' ? 'كنفهم...'        : '';
 
   const progressFraction = Math.min(triagePhaseNum / TOTAL_PHASES, 1);
 
@@ -512,60 +564,65 @@ const TriageScreen: React.FC<Props> = ({ navigation, route }) => {
           />
         </View>
 
-        {/* Main scrollable content */}
+        {/* Main content — centered icon + wave + question */}
         <ScrollView
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
           <Text style={styles.icon} accessibilityElementsHidden>{currentIcon}</Text>
 
-          {currentQuestion ? (
-            <Text style={styles.question}>{currentQuestion}</Text>
-          ) : null}
-
           <View style={styles.waveContainer}>
             <SpeechWave
               type={indicatorPhase === 'speaking' ? 'speaking' : 'listening'}
               active={indicatorPhase === 'speaking' || indicatorPhase === 'listening'}
-              color={indicatorPhase === 'speaking' ? COLORS.primary : COLORS.red}
+              color={indicatorPhase === 'speaking' ? COLORS.primary : COLORS.green}
               barCount={20}
-              maxHeight={48}
+              maxHeight={44}
             />
           </View>
+
+          {currentQuestion ? (
+            <Text style={styles.question}>{currentQuestion}</Text>
+          ) : null}
 
           {transcript ? (
             <Text style={styles.transcript}>{transcript}</Text>
           ) : null}
         </ScrollView>
 
-        {/* Fixed bottom: mic + answer buttons */}
+        {/* Fixed bottom: mic button + fallback buttons */}
         <View style={styles.answerArea}>
           {hintText ? <Text style={styles.hint}>{hintText}</Text> : null}
 
-          <MicButton state={micState} onPress={handleMicPress} size={80} />
+          {/* MicButton — 70px, pulses green while listening */}
+          <MicButton state={micState} onPress={handleMicPress} size={70} />
 
+          {/* Fallback buttons — small, horizontal, visible only after 5s or no-match */}
           {showButtons && currentButtons.length > 0 && (
-            <ScrollView
-              style={styles.btnScroll}
-              contentContainerStyle={styles.btnScrollContent}
-              showsVerticalScrollIndicator={currentButtons.length > 4}
-              keyboardShouldPersistTaps="always"
-            >
+            <View style={styles.btnRow}>
               {currentButtons.map((btn) => (
                 <TouchableOpacity
                   key={btn.value}
                   style={[
                     styles.answerBtn,
-                    { backgroundColor: COLOR_MAP[btn.color_key] ?? COLORS.primary },
+                    {
+                      backgroundColor: COLOR_BG_MAP[btn.color_key] ?? COLOR_BG_MAP.primary,
+                      borderColor: COLOR_MAP[btn.color_key] ?? COLORS.primary,
+                    },
                   ]}
                   onPress={() => handleButtonPress(btn)}
-                  activeOpacity={0.75}
+                  activeOpacity={0.7}
                   accessibilityLabel={btn.label}
                 >
-                  <Text style={styles.answerBtnText}>{btn.label}</Text>
+                  <Text style={[
+                    styles.answerBtnText,
+                    { color: COLOR_MAP[btn.color_key] ?? COLORS.primary },
+                  ]}>
+                    {btn.label}
+                  </Text>
                 </TouchableOpacity>
               ))}
-            </ScrollView>
+            </View>
           )}
         </View>
 
@@ -585,7 +642,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
     paddingTop: 8,
-    paddingBottom: 24,
+    paddingBottom: 20,
   },
   header: {
     flexDirection: 'row',
@@ -609,44 +666,44 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   progressTrack: {
-    height: 6,
+    height: 5,
     borderRadius: 3,
     backgroundColor: COLORS.border,
-    marginBottom: 14,
+    marginBottom: 12,
     overflow: 'hidden',
   },
   progressFill: {
-    height: 6,
+    height: 5,
     borderRadius: 3,
   },
   content: {
     flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    gap: 16,
+    paddingVertical: 12,
+    gap: 18,
   },
   icon: {
-    fontSize: 64,
+    fontSize: 80,
     textAlign: 'center',
-  },
-  question: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: COLORS.text,
-    textAlign: 'center',
-    lineHeight: 36,
-    paddingHorizontal: 8,
-    writingDirection: 'rtl',
   },
   waveContainer: {
     width: '100%',
-    height: 56,
+    height: 52,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  question: {
+    fontSize: 21,
+    fontWeight: '700',
+    color: COLORS.text,
+    textAlign: 'center',
+    lineHeight: 34,
+    paddingHorizontal: 8,
+    writingDirection: 'rtl',
+  },
   transcript: {
-    fontSize: 14,
+    fontSize: 13,
     color: COLORS.textMuted,
     textAlign: 'center',
     fontStyle: 'italic',
@@ -656,41 +713,35 @@ const styles = StyleSheet.create({
   answerArea: {
     alignItems: 'center',
     gap: 10,
-    paddingTop: 6,
+    paddingTop: 4,
   },
   hint: {
-    fontSize: 14,
+    fontSize: 13,
     color: COLORS.textMuted,
     textAlign: 'center',
     writingDirection: 'rtl',
   },
-  btnScroll: {
-    maxHeight: 300,
-    width: '100%',
-  },
-  btnScrollContent: {
+  btnRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
-    paddingBottom: 4,
+    justifyContent: 'center',
+    width: '100%',
+    paddingHorizontal: 4,
   },
   answerBtn: {
-    width: '100%',
-    height: 60,
-    borderRadius: 16,
+    height: 44,
+    borderRadius: 22,
+    paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
+    borderWidth: 1,
   },
   answerBtnText: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
     writingDirection: 'rtl',
     textAlign: 'center',
-    paddingHorizontal: 12,
   },
 });
 

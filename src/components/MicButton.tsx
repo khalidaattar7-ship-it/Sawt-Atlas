@@ -34,12 +34,9 @@ const MicButton: React.FC<MicButtonProps> = ({ state, onPress, size = 100 }) => 
   const ring3 = useRef(new Animated.Value(0)).current;
 
   const buttonColor =
-    state === 'disabled' ? COLORS.textLight :
-    state === 'listening' ? COLORS.red :
-    COLORS.green;
+    state === 'disabled' ? COLORS.textLight : COLORS.green;
 
-  const ringColor =
-    state === 'listening' ? COLORS.red : COLORS.green;
+  const ringColor = COLORS.green;
 
   const makePulse = (anim: Animated.Value, delay: number) =>
     Animated.loop(
@@ -98,7 +95,7 @@ const MicButton: React.FC<MicButtonProps> = ({ state, onPress, size = 100 }) => 
             height: size,
             borderRadius: size / 2,
             backgroundColor: buttonColor,
-            shadowColor: state === 'listening' ? COLORS.red : COLORS.green,
+            shadowColor: COLORS.green,
           },
         ]}
       >
