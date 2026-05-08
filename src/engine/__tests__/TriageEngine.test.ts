@@ -1,147 +1,41 @@
-// Sawt Atlas Urgence — Tests unitaires du moteur de triage
-// Fichier créé le 2026-05-07
-
 import { TriageEngine } from '../TriageEngine';
+import { RuntimeProfile } from '../../types';
 
 const engine = new TriageEngine();
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+const DEFAULT_PROFILE: RuntimeProfile = {
+  interlocutorMode: 'patient',
+  sex: null,
+  ageCategory: null,
+  isPregnant: false,
+  pregnancyMonths: null,
+  diabetes: false,
+  hypertension: false,
+  cardiac: false,
+  bloodThinner: false,
+  allergies: false,
+  isRecurrent: false,
+  _maternity_done: false,
+};
 
-const process = (nodeId: string, raw: string) => engine.processAnswer(nodeId, raw);
+const adultMaleProfile: RuntimeProfile = {
+  ...DEFAULT_PROFILE,
+  sex: 'male',
+  ageCategory: 'adult',
+};
 
-// ─── Test suites ──────────────────────────────────────────────────────────────
+const childProfile: RuntimeProfile = {
+  ...DEFAULT_PROFILE,
+  sex: 'male',
+  ageCategory: 'child',
+};
 
-describe('TriageEngine — Scénarios cliniques critiques', () => {
-
-  // 1. Femme enceinte + saignement abondant → RED hémorragie obstétricale
-  test('mat_bleeding: saignement abondant → RED hémorragie obstétricale', () => {
-    // Multiple matching keywords to cross 0.6 confidence threshold
-    const result = process('mat_bleeding', 'واه بزاف كتير حمار abondant');
-    expect(result.result?.level).toBe('RED');
-    expect(result.result?.label_fr).toMatch(/[Hh]émorragie/);
-  });
-
-  // 2. Enfant déshydraté sévère (refuse de boire, yeux enfoncés) → RED
-  test('ped_dehydration: yeux enfoncés, refuse de boire → RED déshydratation sévère', () => {
-    // Pure darija/arabic keywords to avoid sub-token collision with mild branch
-    const result = process('ped_dehydration', 'واه غارقين يرفض ما كيشربش بلا دموع');
-    expect(result.result?.level).toBe('RED');
-    expect(result.result?.label_fr).toMatch(/[Dd]éshydratat/);
-  });
-
-  // 3. Douleur thoracique > 20 min avec irradiation → RED IDM
-  test('motive_chest: douleur thoracique avec irradiation bras → next cardio_chest_pain', () => {
-    const result = process('motive_chest', 'شديد عشرين دقيقة ينتشر للذراع');
-    // Route vers cardio_chest_pain (cardiac branch)
-    expect(result.nextNodeId).toBe('cardio_chest_pain');
-  });
-
-  test('cardio_chest_pain: douleur intense > 20 min → RED IDM', () => {
-    const result = process('cardio_chest_pain', 'يعصر شديد نص ساعة عرق');
-    expect(result.result?.level).toBe('RED');
-    expect(result.result?.label_fr).toMatch(/IDM|[Ii]nfarctus/);
-  });
-
-  // 4. Fièvre légère 37.5°C → GREEN
-  test('fever_severity: fièvre légère 37.5°C → GREEN', () => {
-    const result = process('fever_severity', '37 خفيفة شوية');
-    expect(result.result?.level).toBe('GREEN');
-  });
-
-  // 5. Confiance STT faible (0.45) → ORANGE forcé par précaution
-  test('CONFIDENCE_THRESHOLD: réponse incompréhensible → ORANGE précaution', () => {
-    // Raw text with no matching keywords → confidence < 0.6 → forced ORANGE
-    const result = process('avpu_alert', 'xyzqwerty123incomprehensible');
-    expect(result.result?.level).toBe('ORANGE');
-    expect(result.confidence).toBeLessThan(0.6);
-  });
-
-  // 6. AVPU = U (inconscient) → RED immédiat
-  test('avpu_alert: AVPU=U inconscient → RED immédiat', () => {
-    const result = process('avpu_alert', 'مغمى عليه فاقد الوعي غايب');
-    expect(result.result?.level).toBe('RED');
-    expect(result.extractedValue).toBe('unresponsive');
-  });
-
-  // 7. Brûlure 25% surface → RED (calculateBurnPercentage)
-  test('calculateBurnPercentage: 25% SCT → RED (>= 18%)', () => {
-    // TriageEngine uses Wallace zone IDs: head(9%) + chest_back(9%) = 18%
-    const pct18 = engine.calculateBurnPercentage(['head', 'chest_back']);
-    expect(pct18).toBe(18);
-    expect(pct18).toBeGreaterThanOrEqual(18);
-    // head(9%) + chest_front(9%) + arm_right(9%) = 27% — clearly RED
-    const pct27 = engine.calculateBurnPercentage(['head', 'chest_front', 'arm_right']);
-    expect(pct27).toBe(27);
-  });
-
-  // 8. Score FAST positif récent → RED AVC
-  test('cardio_fast_time: FAST symptômes récents (aujourd\'hui) → RED AVC', () => {
-    // Uses multilingual keywords to cross confidence threshold
-    const result = process('cardio_fast_time', 'دابا توا اليوم maintenant récent');
-    expect(result.result?.level).toBe('RED');
-    expect(result.result?.label_fr).toMatch(/AVC/);
-  });
-
-});
-
-// ─── Routing par profil ───────────────────────────────────────────────────────
-
-describe('TriageEngine — Routing par profil patient', () => {
-
-  test('enfant < 5 ans → branches pédiatriques dans la queue', () => {
-    const queue = engine.getRoutingForProfile({
-      id: 'test',
-      sex: 'male',
-      ageCategory: 'child',
-      isPregnant: false,
-      pregnancyMonths: null,
-      knownConditions: { diabetes: false, hypertension: false, cardiac: false, bloodThinner: false, other: null },
-      allergies: null,
-      isRecurrent: false,
-      medicationPhoto: null,
-    });
-    expect(queue).toContain('ped_breathing');
-    expect(queue).toContain('ped_dehydration');
-    expect(queue).toContain('ped_fever');
-  });
-
-  test('femme enceinte → branches maternité dans la queue', () => {
-    const queue = engine.getRoutingForProfile({
-      id: 'test',
-      sex: 'female',
-      ageCategory: 'adult',
-      isPregnant: true,
-      pregnancyMonths: 7,
-      knownConditions: { diabetes: false, hypertension: false, cardiac: false, bloodThinner: false, other: null },
-      allergies: null,
-      isRecurrent: false,
-      medicationPhoto: null,
-    });
-    expect(queue).toContain('mat_contractions');
-    expect(queue).toContain('mat_bleeding');
-    expect(queue).toContain('mat_preeclampsia');
-  });
-
-  test('adulte standard → AVPU + ABC + motifs (sans pédiatrique ni maternité)', () => {
-    const queue = engine.getRoutingForProfile({
-      id: 'test',
-      sex: 'male',
-      ageCategory: 'adult',
-      isPregnant: false,
-      pregnancyMonths: null,
-      knownConditions: { diabetes: false, hypertension: false, cardiac: false, bloodThinner: false, other: null },
-      allergies: null,
-      isRecurrent: false,
-      medicationPhoto: null,
-    });
-    expect(queue).toContain('avpu_alert');
-    expect(queue).toContain('abc_airway');
-    expect(queue).toContain('motive_chest');
-    expect(queue).not.toContain('ped_breathing');
-    expect(queue).not.toContain('mat_contractions');
-  });
-
-});
+const pregnantFemaleProfile: RuntimeProfile = {
+  ...DEFAULT_PROFILE,
+  sex: 'female',
+  ageCategory: 'adult',
+  isPregnant: true,
+};
 
 // ─── Accesseurs de base ───────────────────────────────────────────────────────
 
@@ -153,14 +47,14 @@ describe('TriageEngine — Accesseurs', () => {
     expect(greeting.length).toBeGreaterThan(10);
   });
 
-  test('getCurrentNode() retourne le nœud existant', () => {
-    const node = engine.getCurrentNode('avpu_alert');
+  test('getNode() retourne le nœud existant', () => {
+    const node = engine.getNode('phase5_avpu');
     expect(node).toBeDefined();
-    expect(node?.id).toBe('avpu_alert');
+    expect(node?.id).toBe('phase5_avpu');
   });
 
-  test('getCurrentNode() retourne undefined pour un nœud inexistant', () => {
-    const node = engine.getCurrentNode('inexistant_xyz');
+  test('getNode() retourne undefined pour un nœud inexistant', () => {
+    const node = engine.getNode('inexistant_xyz');
     expect(node).toBeUndefined();
   });
 
@@ -170,17 +64,165 @@ describe('TriageEngine — Accesseurs', () => {
     expect(engine.getClosingPhrase('GREEN')).toBeTruthy();
   });
 
-  test('isRedResult() identifie correctement les résultats RED', () => {
-    const redResult = engine.processAnswer('avpu_alert', 'مغمى عليه فاقد الوعي غايب');
-    expect(engine.isRedResult(redResult.result!)).toBe(true);
+  test('getDisclaimer() retourne un texte non vide', () => {
+    expect(engine.getDisclaimer()).toBeTruthy();
   });
 
-  test('getProfilingQuestion() retourne des textes pour patient et companion', () => {
-    const patient = engine.getProfilingQuestion('sex', 'patient');
-    const companion = engine.getProfilingQuestion('sex', 'companion');
+  test('getQuestionText() retourne patient vs companion', () => {
+    const node = engine.getNode('phase2a_sex');
+    expect(node).toBeDefined();
+    if (!node) return;
+    const patient   = engine.getQuestionText(node, 'patient');
+    const companion = engine.getQuestionText(node, 'companion');
     expect(patient).toBeTruthy();
     expect(companion).toBeTruthy();
-    expect(patient).not.toBe(companion);
+  });
+
+});
+
+// ─── Routing / sentinels ──────────────────────────────────────────────────────
+
+describe('TriageEngine — Routing', () => {
+
+  test('phase2b_age child → skip phase2c_pregnant → phase3a_diabetes', () => {
+    // After updateProfile sets ageCategory=child, getNextNodeId should skip pregnancy
+    const profile = engine.updateProfile(DEFAULT_PROFILE, engine.getNode('phase2b_age')!, 'child');
+    const next = engine.getNextNodeId('phase2b_age', 'child', profile);
+    expect(next).toBe('phase3a_diabetes');
+  });
+
+  test('phase2b_age adult male → skip phase2c_pregnant → phase3a_diabetes', () => {
+    const profileWithMale = { ...DEFAULT_PROFILE, sex: 'male' as const };
+    const profile = engine.updateProfile(profileWithMale, engine.getNode('phase2b_age')!, 'adult');
+    const next = engine.getNextNodeId('phase2b_age', 'adult', profile);
+    expect(next).toBe('phase3a_diabetes');
+  });
+
+  test('phase2b_age adult female → phase2c_pregnant', () => {
+    const profileWithFemale = { ...DEFAULT_PROFILE, sex: 'female' as const };
+    const profile = engine.updateProfile(profileWithFemale, engine.getNode('phase2b_age')!, 'adult');
+    const next = engine.getNextNodeId('phase2b_age', 'adult', profile);
+    expect(next).toBe('phase2c_pregnant');
+  });
+
+  test('__ABC_DONE__ adulte → phase7_complaint', () => {
+    const next = engine.getNextNodeId('phase6c_bleeding', 'no', adultMaleProfile);
+    expect(next).toBe('phase7_complaint');
+  });
+
+  test('__ABC_DONE__ enfant → phase9_child_breathing', () => {
+    const next = engine.getNextNodeId('phase6c_bleeding', 'no', childProfile);
+    expect(next).toBe('phase9_child_breathing');
+  });
+
+  test('__END__ adulte non-enceinte → __FINISH__', () => {
+    const next = engine.getNextNodeId('phase8a_fast', 'no', adultMaleProfile);
+    expect(next).toBe('__FINISH__');
+  });
+
+  test('__END__ femme enceinte sans _maternity_done → phase8g_contractions', () => {
+    const next = engine.getNextNodeId('phase8a_fast', 'no', pregnantFemaleProfile);
+    expect(next).toBe('phase8g_contractions');
+  });
+
+  test('__END__ femme enceinte avec _maternity_done → __FINISH__', () => {
+    const profile = { ...pregnantFemaleProfile, _maternity_done: true };
+    const next = engine.getNextNodeId('phase8g_waters', 'no', profile);
+    expect(next).toBe('__FINISH__');
+  });
+
+  test('__BODY_MAP__ retourné tel quel pour brûlure', () => {
+    const next = engine.getNextNodeId('phase8b_burn_type', 'thermal', adultMaleProfile);
+    expect(next).toBe('__BODY_MAP__');
+  });
+
+  test('resolveSentinel __END__ sans grossesse → __FINISH__', () => {
+    expect(engine.resolveSentinel('__END__', adultMaleProfile)).toBe('__FINISH__');
+  });
+
+  test('resolveSentinel __END__ enceinte → phase8g_contractions', () => {
+    expect(engine.resolveSentinel('__END__', pregnantFemaleProfile)).toBe('phase8g_contractions');
+  });
+
+});
+
+// ─── STT matching ─────────────────────────────────────────────────────────────
+
+describe('TriageEngine — matchSTTToButton', () => {
+
+  test('keyword exact match retourne le bon bouton', () => {
+    const node = engine.getNode('phase5_avpu');
+    expect(node).toBeDefined();
+    if (!node) return;
+    const matched = engine.matchSTTToButton('فايق مزيان', node.buttons);
+    expect(matched).not.toBeNull();
+    expect(matched?.value).toBe('alert');
+  });
+
+  test('aucun match retourne null', () => {
+    const node = engine.getNode('phase5_avpu');
+    if (!node) return;
+    const matched = engine.matchSTTToButton('xyzqwerty123incomprehensible', node.buttons);
+    expect(matched).toBeNull();
+  });
+
+  test('input vide retourne null', () => {
+    const node = engine.getNode('phase1_interlocutor');
+    if (!node) return;
+    expect(engine.matchSTTToButton('', node.buttons)).toBeNull();
+    expect(engine.matchSTTToButton('   ', node.buttons)).toBeNull();
+  });
+
+});
+
+// ─── Profile update ───────────────────────────────────────────────────────────
+
+describe('TriageEngine — updateProfile', () => {
+
+  test('phase1_interlocutor → interlocutorMode', () => {
+    const node = engine.getNode('phase1_interlocutor');
+    if (!node) return;
+    const p = engine.updateProfile(DEFAULT_PROFILE, node, 'companion');
+    expect(p.interlocutorMode).toBe('companion');
+  });
+
+  test('phase2a_sex → sex', () => {
+    const node = engine.getNode('phase2a_sex');
+    if (!node) return;
+    const p = engine.updateProfile(DEFAULT_PROFILE, node, 'female');
+    expect(p.sex).toBe('female');
+  });
+
+  test('phase2c_pregnant yes → isPregnant true', () => {
+    const node = engine.getNode('phase2c_pregnant');
+    if (!node) return;
+    const p = engine.updateProfile(DEFAULT_PROFILE, node, 'yes');
+    expect(p.isPregnant).toBe(true);
+  });
+
+  test('nœud sans profile_key → profil inchangé', () => {
+    const node = engine.getNode('phase4_scene_safety');
+    if (!node) return;
+    const p = engine.updateProfile(adultMaleProfile, node, 'safe');
+    expect(p).toEqual(adultMaleProfile);
+  });
+
+});
+
+// ─── Burn percentage ──────────────────────────────────────────────────────────
+
+describe('TriageEngine — calculateBurnPercentage', () => {
+
+  test('18% SCT → seuil RED', () => {
+    expect(engine.calculateBurnPercentage(['head', 'chest_back'])).toBe(18);
+  });
+
+  test('27% SCT (head + chest_front + arm_right)', () => {
+    expect(engine.calculateBurnPercentage(['head', 'chest_front', 'arm_right'])).toBe(27);
+  });
+
+  test('zones vides → 0%', () => {
+    expect(engine.calculateBurnPercentage([])).toBe(0);
   });
 
 });

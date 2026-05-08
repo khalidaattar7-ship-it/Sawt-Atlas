@@ -1,6 +1,3 @@
-// Sawt Atlas Urgence — Écran de triage principal : flux vocal AVPU+ABC+9 domaines
-// STT natif activé + boutons fallback visibles pendant l'écoute
-
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   SafeAreaView,
@@ -12,9 +9,10 @@ import {
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
-  InterlocutorMode,
   PatientProfile,
   RootStackParamList,
+  RuntimeProfile,
+  TriageButton,
   TriageResult,
   UrgencyLevel,
 } from '../types';
@@ -47,85 +45,89 @@ import MicButton from '../components/MicButton';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Triage'>;
 
-// ─── Profiling question order ─────────────────────────────────────────────────
+const TOTAL_PHASES = 9;
+const FIRST_NODE = 'phase1_interlocutor';
 
-const PROFILING_QUESTIONS = [
-  'interlocutor',
-  'sex',
-  'age',
-  'pregnant',       // skipped when sex !== 'female'
-  'diabetes',
-  'hypertension',
-  'cardiac',
-  'blood_thinner',
-  'allergies',
-  'recurrent',
-] as const;
+const COLOR_MAP: Record<string, string> = {
+  green: COLORS.green,
+  orange: COLORS.orange,
+  red: COLORS.red,
+  primary: COLORS.primary,
+};
 
-type ProfilingId = typeof PROFILING_QUESTIONS[number];
-type DotStatus = 'pending' | 'green' | 'orange' | 'red';
-type FlowPhase = 'greeting' | 'profiling' | 'triage' | 'done';
+const DEFAULT_RUNTIME_PROFILE: RuntimeProfile = {
+  interlocutorMode: 'patient',
+  sex: null,
+  ageCategory: null,
+  isPregnant: false,
+  pregnancyMonths: null,
+  diabetes: false,
+  hypertension: false,
+  cardiac: false,
+  bloodThinner: false,
+  allergies: false,
+  isRecurrent: false,
+  _maternity_done: false,
+};
 
-// ─── Fallback buttons (secondary to STT, always visible during listening) ────
-
-const ANSWER_BUTTONS = [
-  { label: 'إيه',  value: 'واه',  color: COLORS.green  },
-  { label: 'لا',   value: 'لا',   color: COLORS.red    },
-  { label: 'شوية', value: 'شوية', color: COLORS.orange },
-] as const;
-
-// ─── Component ────────────────────────────────────────────────────────────────
+function buildPatientProfile(rp: RuntimeProfile, sessionId: string): PatientProfile {
+  const monthsMap = { trimester1: 2, trimester2: 5, trimester3: 8 };
+  return {
+    id: sessionId,
+    sex: rp.sex,
+    ageCategory: rp.ageCategory,
+    isPregnant: rp.isPregnant,
+    pregnancyMonths: rp.pregnancyMonths ? (monthsMap[rp.pregnancyMonths] ?? null) : null,
+    knownConditions: {
+      diabetes: rp.diabetes,
+      hypertension: rp.hypertension,
+      cardiac: rp.cardiac,
+      bloodThinner: rp.bloodThinner,
+      other: null,
+    },
+    allergies: rp.allergies ? 'oui' : null,
+    isRecurrent: rp.isRecurrent,
+    medicationPhoto: null,
+  };
+}
 
 const TriageScreen: React.FC<Props> = ({ navigation, route }) => {
   const {
     session,
-    setPhase,
     setSpeaking,
     setListening,
     setProcessing,
     setAnswer,
     setResult,
     setRedDetected,
-    nextNode,
     setSilenceState,
     updateSession,
+    nextNode,
   } = useTriageStore();
 
   // ── UI state ──────────────────────────────────────────────────────────────
   const [indicatorPhase, setIndicatorPhase] = useState<IndicatorPhase>('waiting');
   const [currentQuestion, setCurrentQuestion] = useState('');
-  const [transcript, setTranscript]           = useState('');
-  const [currentIcon, setCurrentIcon]         = useState('🏥');
-  const [progressDots, setProgressDots]       = useState<DotStatus[]>([]);
-  const [showButtons, setShowButtons]         = useState(false);
+  const [currentIcon, setCurrentIcon] = useState('🏥');
+  const [currentButtons, setCurrentButtons] = useState<TriageButton[]>([]);
+  const [showButtons, setShowButtons] = useState(false);
+  const [transcript, setTranscript] = useState('');
+  const [triagePhaseNum, setTriagePhaseNum] = useState(1);
+  const [redBar, setRedBar] = useState(false);
 
-  // ── Flow refs ─────────────────────────────────────────────────────────────
+  // ── Refs ──────────────────────────────────────────────────────────────────
   const isMounted          = useRef(true);
-  const flowPhase          = useRef<FlowPhase>('greeting');
-  const interlocutorMode   = useRef<InterlocutorMode>('patient');
-  const localProfile       = useRef<PatientProfile>({
-    id: session?.id ?? '',
-    sex: null,
-    ageCategory: null,
-    isPregnant: false,
-    pregnancyMonths: null,
-    knownConditions: { diabetes: false, hypertension: false, cardiac: false, bloodThinner: false, other: null },
-    allergies: null,
-    isRecurrent: false,
-    medicationPhoto: null,
-  });
-  const profilingIndexRef    = useRef(0);
-  const nodeQueue            = useRef<string[]>([]);
-  const queueIndex           = useRef(0);
-  const currentNodeId        = useRef('');
+  const currentNodeIdRef   = useRef(FIRST_NODE);
+  const currentButtonsRef  = useRef<TriageButton[]>([]);
+  const runtimeProfileRef  = useRef<RuntimeProfile>({ ...DEFAULT_RUNTIME_PROFILE });
+  const redDetectedRef     = useRef(false);
   const waitingForBurnReturn = useRef(false);
-  const redDetectedRef       = useRef(false);
-  const sessionRef           = useRef(session);
-  const currentQuestionRef   = useRef('');
+  const sessionRef         = useRef(session);
 
   useEffect(() => { sessionRef.current = session; }, [session]);
+  useEffect(() => { currentButtonsRef.current = currentButtons; }, [currentButtons]);
 
-  // SilenceDetector — stable reference, created once
+  // Silence detector — stable reference
   const sd = useRef(
     new SilenceDetector({
       warning1Ms: SILENCE_WARNING_1_MS,
@@ -134,60 +136,7 @@ const TriageScreen: React.FC<Props> = ({ navigation, route }) => {
     })
   ).current;
 
-  // ── Progress dot helpers ──────────────────────────────────────────────────
-
-  const markDot = useCallback((index: number, status: DotStatus) => {
-    setProgressDots((prev) => {
-      if (index >= prev.length) return prev;
-      const next = [...prev];
-      next[index] = status;
-      return next;
-    });
-  }, []);
-
-  // ── Phase transition helpers ──────────────────────────────────────────────
-
-  // Opens microphone + shows fallback buttons simultaneously
-  const startListeningPhase = useCallback(() => {
-    if (!isMounted.current) return;
-    setIndicatorPhase('listening');
-    setSpeaking(false);
-    setListening(true);
-    setShowButtons(true);   // fallback buttons always visible while listening
-    sd.start();
-    startListening('ar-MA');
-  }, [setSpeaking, setListening, sd]);
-
-  // Stops microphone + hides buttons
-  const stopListeningPhase = useCallback(() => {
-    sd.stop();
-    stopListening();
-    setListening(false);
-    setShowButtons(false);
-    setProcessing(true);
-    setIndicatorPhase('processing');
-  }, [setListening, setProcessing, sd]);
-
-  // Speak question → 500ms buffer → open mic + show buttons
-  const speakThenListen = useCallback((text: string) => {
-    if (!isMounted.current) return;
-    setIndicatorPhase('speaking');
-    setSpeaking(true);
-    setShowButtons(false);
-    setTranscript('');
-    currentQuestionRef.current = text;
-    setCurrentQuestion(text);
-    speakWithCallback(text, () => {
-      if (!isMounted.current) return;
-      // 500ms buffer so audio fully drains before mic opens
-      setTimeout(() => {
-        if (!isMounted.current) return;
-        startListeningPhase();
-      }, 500);
-    });
-  }, [setSpeaking, startListeningPhase]);
-
-  // Speak result/closing text — no mic activation afterward
+  // ── Speak-only helper (no mic) ────────────────────────────────────────────
   const speakOnly = useCallback((text: string, onDone?: () => void) => {
     if (!isMounted.current) return;
     setIndicatorPhase('speaking');
@@ -201,8 +150,209 @@ const TriageScreen: React.FC<Props> = ({ navigation, route }) => {
     });
   }, [setSpeaking]);
 
-  // ── Silence escalation handlers ───────────────────────────────────────────
+  // ── Open / close mic ─────────────────────────────────────────────────────
+  const openMic = useCallback(() => {
+    if (!isMounted.current) return;
+    setShowButtons(true);
+    setIndicatorPhase('listening');
+    setSpeaking(false);
+    setListening(true);
+    sd.start();
+    startListening('ar-MA');
+  }, [setSpeaking, setListening, sd]);
 
+  const closeMic = useCallback(() => {
+    sd.stop();
+    stopListening();
+    setListening(false);
+    setShowButtons(false);
+    setProcessing(true);
+    setIndicatorPhase('processing');
+  }, [setListening, setProcessing, sd]);
+
+  // ── Forward refs for mutually recursive functions ─────────────────────────
+  const speakAndShowButtonsRef = useRef<(nodeId: string) => void>(() => {});
+  const handleButtonRef        = useRef<(button: TriageButton) => void>(() => {});
+  const continueToNextRef      = useRef<(nextId: string) => void>(() => {});
+  const finishTriageRef        = useRef<() => void>(() => {});
+
+  // ── finishTriage ──────────────────────────────────────────────────────────
+  useEffect(() => {
+    finishTriageRef.current = () => {
+      if (!isMounted.current) return;
+      const level: UrgencyLevel = redDetectedRef.current ? 'RED' : 'ORANGE';
+      const closingText = triageEngine.getClosingPhrase(level);
+      const disclaimer  = triageEngine.getDisclaimer();
+      const sess = sessionRef.current;
+
+      const result: TriageResult = {
+        level,
+        label_fr: level === 'RED' ? 'Urgence critique' : 'Consultation recommandée',
+        label_darija: level === 'RED' ? 'حالة خطيرة' : 'استشر طبيبا',
+        confidence: 1.0,
+        instructions_fr: [],
+        instructions_darija: [disclaimer],
+        speak_result_darija: closingText,
+        alert_samu: level === 'RED',
+        sms_template: null,
+      };
+
+      if (sess) {
+        updateSession({
+          patientProfile: buildPatientProfile(runtimeProfileRef.current, sess.id),
+          interlocutorMode: runtimeProfileRef.current.interlocutorMode,
+        });
+      }
+      setResult(result);
+
+      speakOnly(closingText, () => {
+        if (!isMounted.current) return;
+        const sid = sessionRef.current?.id;
+        if (sid) navigation.replace('Result', { sessionId: sid });
+      });
+    };
+  });
+
+  // ── continueToNext ────────────────────────────────────────────────────────
+  useEffect(() => {
+    continueToNextRef.current = (nextId: string) => {
+      if (!isMounted.current) return;
+
+      if (nextId === '__BODY_MAP__') {
+        waitingForBurnReturn.current = true;
+        setIndicatorPhase('waiting');
+        navigation.navigate('BodyMap');
+        return;
+      }
+
+      if (nextId === '__FINISH__') {
+        finishTriageRef.current();
+        return;
+      }
+
+      // Entering maternity branch — mark done so subsequent __END__ → __FINISH__
+      if (nextId === 'phase8g_contractions') {
+        runtimeProfileRef.current = { ...runtimeProfileRef.current, _maternity_done: true };
+      }
+
+      currentNodeIdRef.current = nextId;
+      speakAndShowButtonsRef.current(nextId);
+    };
+  });
+
+  // ── handleButton ──────────────────────────────────────────────────────────
+  useEffect(() => {
+    handleButtonRef.current = (button: TriageButton) => {
+      if (!isMounted.current) return;
+      setProcessing(false);
+      setIndicatorPhase('waiting');
+
+      const nodeId = currentNodeIdRef.current;
+      const node = triageEngine.getNode(nodeId);
+
+      // Update local profile from this answer
+      if (node) {
+        runtimeProfileRef.current = triageEngine.updateProfile(
+          runtimeProfileRef.current,
+          node,
+          button.value,
+        );
+      }
+
+      // Record answer in store
+      setAnswer({
+        nodeId,
+        questionDarija: node
+          ? triageEngine.getQuestionText(node, runtimeProfileRef.current.interlocutorMode)
+          : '',
+        responseRaw: button.label,
+        extractedValue: button.value,
+        confidence: 1.0,
+        timestamp: Date.now(),
+        isRedDetected: button.triggerRed ?? false,
+      });
+
+      const nextId = triageEngine.getNextNodeId(
+        nodeId,
+        button.value,
+        runtimeProfileRef.current,
+      );
+
+      // If button has instructions to speak (safety info or RED)
+      if (button.instructions_darija) {
+        if (button.triggerRed) {
+          redDetectedRef.current = true;
+          setRedDetected(true);
+          setRedBar(true);
+        }
+        const sess = sessionRef.current;
+        speakOnly(button.instructions_darija, () => {
+          if (button.triggerRed && sess) {
+            triggerRedAlert({ ...sess, classification: 'RED' }).catch(() => {});
+          }
+          continueToNextRef.current(nextId);
+        });
+        return;
+      }
+
+      continueToNextRef.current(nextId);
+    };
+  });
+
+  // ── speakAndShowButtons ───────────────────────────────────────────────────
+  useEffect(() => {
+    speakAndShowButtonsRef.current = (nodeId: string) => {
+      if (!isMounted.current) return;
+
+      const node = triageEngine.getNode(nodeId);
+      if (!node) {
+        finishTriageRef.current();
+        return;
+      }
+
+      currentNodeIdRef.current = nodeId;
+      nextNode(nodeId);
+      setTriagePhaseNum(node.phase);
+      setCurrentIcon(node.icon ?? '❓');
+      setShowButtons(false);
+      setTranscript('');
+
+      const questionText = triageEngine.getQuestionText(
+        node,
+        runtimeProfileRef.current.interlocutorMode,
+      );
+      setCurrentQuestion(questionText);
+      currentButtonsRef.current = node.buttons;
+      setCurrentButtons(node.buttons);
+
+      setIndicatorPhase('speaking');
+      setSpeaking(true);
+      speakWithCallback(questionText, () => {
+        if (!isMounted.current) return;
+        openMic();
+      });
+    };
+  });
+
+  // ── STT result ────────────────────────────────────────────────────────────
+  const handleSTTResultRef = useRef<(raw: string) => void>(() => {});
+  useEffect(() => {
+    handleSTTResultRef.current = (raw: string) => {
+      if (!isMounted.current || !raw.trim()) return;
+      sd.reset();
+      setTranscript(raw);
+      speakFeedback().catch(() => {});
+
+      const matched = triageEngine.matchSTTToButton(raw, currentButtonsRef.current);
+      if (matched) {
+        closeMic();
+        handleButtonRef.current(matched);
+      }
+      // No match → keep mic open, user can speak again or press a button
+    };
+  });
+
+  // ── Silence escalation ────────────────────────────────────────────────────
   const handleSilenceWarning1 = useCallback(() => {
     if (!isMounted.current) return;
     setSilenceState('warning_15s');
@@ -230,280 +380,24 @@ const TriageScreen: React.FC<Props> = ({ navigation, route }) => {
     navigation.replace('Companion');
   }, [setSilenceState, setRedDetected, navigation]);
 
-  // ── Forward refs for mutually recursive flow functions ────────────────────
-  // Re-assigned every render (no-deps useEffect) so they never go stale.
-  const advanceQueueRef     = useRef<() => void>(() => {});
-  const handleNodeAnswerRef = useRef<(nodeId: string, raw: string) => void>(() => {});
-  const handleRedResultRef  = useRef<(result: TriageResult) => void>(() => {});
-
-  useEffect(() => {
-    handleRedResultRef.current = (result: TriageResult) => {
-      if (!isMounted.current) return;
-      redDetectedRef.current = true;
-      setRedDetected(true);
-      speakOnly(result.speak_result_darija, () => {
-        if (!isMounted.current) return;
-        const sess = sessionRef.current;
-        if (sess) {
-          triggerRedAlert({ ...sess, finalResult: result, classification: 'RED' }).catch(() => {});
-        }
-        queueIndex.current++;
-        advanceQueueRef.current();
-      });
-    };
-  });
-
-  useEffect(() => {
-    handleNodeAnswerRef.current = (nodeId: string, raw: string) => {
-      if (!isMounted.current) return;
-      setProcessing(true);
-      setIndicatorPhase('processing');
-
-      const processed = triageEngine.processAnswer(nodeId, raw);
-      const dotIdx = queueIndex.current;
-
-      setAnswer({
-        nodeId,
-        questionDarija: currentQuestionRef.current,
-        responseRaw: raw,
-        extractedValue: processed.extractedValue,
-        confidence: processed.confidence,
-        timestamp: Date.now(),
-        isRedDetected: processed.result?.level === 'RED',
-      });
-
-      setProcessing(false);
-
-      // Burn body map special case
-      if (processed.flag === 'TRIGGER_BODY_MAP') {
-        waitingForBurnReturn.current = true;
-        setIndicatorPhase('waiting');
-        navigation.navigate('BodyMap');
-        return;
-      }
-
-      // Terminal result
-      if (processed.result) {
-        if (processed.result.level === 'RED') {
-          markDot(dotIdx, 'red');
-          handleRedResultRef.current(processed.result);
-        } else {
-          markDot(dotIdx, processed.result.level === 'ORANGE' ? 'orange' : 'green');
-          setResult(processed.result);
-          speakOnly(triageEngine.getClosingPhrase(processed.result.level), () => {
-            const sid = sessionRef.current?.id;
-            if (isMounted.current && sid) navigation.replace('Result', { sessionId: sid });
-          });
-        }
-        return;
-      }
-
-      // Branch: jump to specific next node
-      if (processed.nextNodeId) {
-        markDot(dotIdx, 'green');
-        const branch = triageEngine.getCurrentNode(processed.nextNodeId);
-        if (branch) {
-          currentNodeId.current = processed.nextNodeId;
-          nextNode(processed.nextNodeId);
-          setCurrentIcon(branch.icon ?? '❓');
-          speakThenListen(triageEngine.getQuestionText(branch, interlocutorMode.current));
-        } else {
-          queueIndex.current++;
-          advanceQueueRef.current();
-        }
-        return;
-      }
-
-      // Continue sequential queue
-      markDot(dotIdx, 'green');
-      queueIndex.current++;
-      advanceQueueRef.current();
-    };
-  });
-
-  useEffect(() => {
-    advanceQueueRef.current = () => {
-      if (!isMounted.current) return;
-
-      if (queueIndex.current >= nodeQueue.current.length) {
-        if (redDetectedRef.current) {
-          navigation.replace('Companion');
-        } else {
-          const orangeResult: TriageResult = {
-            level: 'ORANGE',
-            label_fr: 'Triage complet — Consultation recommandée',
-            label_darija: 'كمل التريان — راجعو الطبيب',
-            confidence: 0.7,
-            instructions_fr: ['Consultez un médecin', 'Appelez le 15 si aggravation'],
-            instructions_darija: ['روحو للطبيب', 'عيطو للـ 15 إلا خاف عليكم'],
-            speak_result_darija: triageEngine.getClosingPhrase('ORANGE'),
-            alert_samu: false,
-            sms_template: null,
-          };
-          setResult(orangeResult);
-          speakOnly(orangeResult.speak_result_darija, () => {
-            const sid = sessionRef.current?.id;
-            if (isMounted.current && sid) navigation.replace('Result', { sessionId: sid });
-          });
-        }
-        return;
-      }
-
-      const nodeId = nodeQueue.current[queueIndex.current];
-      const node   = triageEngine.getCurrentNode(nodeId);
-
-      if (!node) {
-        queueIndex.current++;
-        advanceQueueRef.current();
-        return;
-      }
-
-      currentNodeId.current = nodeId;
-      nextNode(nodeId);
-      setCurrentIcon(node.icon ?? '❓');
-      speakThenListen(triageEngine.getQuestionText(node, interlocutorMode.current));
-    };
-  });
-
-  // ── Profiling helpers ─────────────────────────────────────────────────────
-
-  const applyProfilingAnswer = useCallback((questionId: ProfilingId, raw: string) => {
-    const p = localProfile.current;
-    const isYes = (s: string) => /يه|واه|آه|oui|نعم|ih/i.test(s);
-
-    switch (questionId) {
-      case 'interlocutor': {
-        const companion = /آخر|راجلي|مرتي|ولدي|بنتي|امي|بابا|جاري|صاحبي|هو|هي|autre|mari|femme|fils|fille/i.test(raw);
-        interlocutorMode.current = companion ? 'companion' : 'patient';
-        break;
-      }
-      case 'sex': {
-        const female = /مرا|بنت|هي|انثى|مراة|femme|fille|tamghart/i.test(raw);
-        localProfile.current = { ...p, sex: female ? 'female' : 'male' };
-        break;
-      }
-      case 'age': {
-        const child   = /دري|طفل|صغير|رضيع|بيبي|شهور|enfant|bébé|arraw/i.test(raw);
-        const elderly = /كبير|شايب|عجوز|ستين|سبعين|ثمانين|âgé|vieux/i.test(raw);
-        localProfile.current = { ...p, ageCategory: child ? 'child' : elderly ? 'elderly' : 'adult' };
-        break;
-      }
-      case 'pregnant':
-        localProfile.current = { ...p, isPregnant: isYes(raw) };
-        break;
-      case 'diabetes':
-        localProfile.current = { ...p, knownConditions: { ...p.knownConditions, diabetes: isYes(raw) } };
-        break;
-      case 'hypertension':
-        localProfile.current = { ...p, knownConditions: { ...p.knownConditions, hypertension: isYes(raw) } };
-        break;
-      case 'cardiac':
-        localProfile.current = { ...p, knownConditions: { ...p.knownConditions, cardiac: isYes(raw) } };
-        break;
-      case 'blood_thinner':
-        localProfile.current = { ...p, knownConditions: { ...p.knownConditions, bloodThinner: isYes(raw) } };
-        break;
-      case 'allergies':
-        localProfile.current = { ...p, allergies: isYes(raw) ? raw : null };
-        break;
-      case 'recurrent':
-        localProfile.current = { ...p, isRecurrent: isYes(raw) };
-        break;
-    }
-  }, []);
-
-  const askNextProfilingQuestion = useCallback(() => {
-    if (!isMounted.current) return;
-
-    // Skip 'pregnant' for non-female patients
-    while (profilingIndexRef.current < PROFILING_QUESTIONS.length) {
-      const qId = PROFILING_QUESTIONS[profilingIndexRef.current];
-      if (qId === 'pregnant' && localProfile.current.sex !== 'female') {
-        profilingIndexRef.current++;
-        continue;
-      }
-      break;
-    }
-
-    if (profilingIndexRef.current >= PROFILING_QUESTIONS.length) {
-      updateSession({
-        patientProfile: localProfile.current,
-        interlocutorMode: interlocutorMode.current,
-      });
-      const queue = triageEngine.getRoutingForProfile(localProfile.current);
-      nodeQueue.current  = queue;
-      queueIndex.current = 0;
-      setProgressDots(queue.map(() => 'pending' as DotStatus));
-      flowPhase.current = 'triage';
-      setPhase('avpu');
-      advanceQueueRef.current();
-      return;
-    }
-
-    const questionId = PROFILING_QUESTIONS[profilingIndexRef.current];
-    const text = triageEngine.getProfilingQuestion(questionId, interlocutorMode.current);
-    setCurrentIcon('📋');
-    speakThenListen(text);
-  }, [updateSession, setPhase, speakThenListen]);
-
-  // ── STT result callback (via ref so always fresh) ─────────────────────────
-
-  const handleSTTResultRef = useRef<(raw: string) => void>(() => {});
-  useEffect(() => {
-    handleSTTResultRef.current = (raw: string) => {
-      if (!isMounted.current || !raw.trim()) return;
-      sd.reset();
-      setTranscript(raw);
-      setShowButtons(false);
-      stopListeningPhase();
-      speakFeedback().catch(() => {});
-
-      if (flowPhase.current === 'profiling') {
-        const qId = PROFILING_QUESTIONS[profilingIndexRef.current];
-        applyProfilingAnswer(qId, raw);
-        profilingIndexRef.current++;
-        askNextProfilingQuestion();
-      } else if (flowPhase.current === 'triage') {
-        handleNodeAnswerRef.current(currentNodeId.current, raw);
-      }
-    };
-  });
-
-  // ── Fallback button press (user prefers button over voice) ────────────────
-
-  const handleButtonPress = useCallback((value: string) => {
+  // ── Button / mic press ────────────────────────────────────────────────────
+  const handleButtonPress = useCallback((button: TriageButton) => {
     if (indicatorPhase !== 'listening') return;
     sd.reset();
-    setTranscript('');
-    stopListeningPhase();
-
-    if (flowPhase.current === 'profiling') {
-      const qId = PROFILING_QUESTIONS[profilingIndexRef.current];
-      applyProfilingAnswer(qId, value);
-      profilingIndexRef.current++;
-      askNextProfilingQuestion();
-    } else if (flowPhase.current === 'triage') {
-      handleNodeAnswerRef.current(currentNodeId.current, value);
-    }
-  }, [indicatorPhase, sd, stopListeningPhase, applyProfilingAnswer, askNextProfilingQuestion]);
-
-  // ── Manual MicButton tap ──────────────────────────────────────────────────
+    closeMic();
+    handleButtonRef.current(button);
+  }, [indicatorPhase, sd, closeMic]);
 
   const handleMicPress = useCallback(() => {
     if (indicatorPhase !== 'listening') return;
-    stopListeningPhase();
-    if (flowPhase.current === 'profiling') {
-      const qId = PROFILING_QUESTIONS[profilingIndexRef.current];
-      applyProfilingAnswer(qId, '');
-      profilingIndexRef.current++;
-      askNextProfilingQuestion();
-    } else if (flowPhase.current === 'triage') {
-      handleNodeAnswerRef.current(currentNodeId.current, '');
-    }
-  }, [indicatorPhase, stopListeningPhase, applyProfilingAnswer, askNextProfilingQuestion]);
+    // Restart STT on tap (clears buffer and retries)
+    stopListening();
+    setTimeout(() => {
+      if (isMounted.current) startListening('ar-MA');
+    }, 300);
+  }, [indicatorPhase]);
 
   // ── Burn result returned from BodyMapScreen ───────────────────────────────
-
   useEffect(() => {
     const burnResult = route.params?.burnResult;
     if (!burnResult || !waitingForBurnReturn.current) return;
@@ -514,7 +408,7 @@ const TriageScreen: React.FC<Props> = ({ navigation, route }) => {
       percentage >= 18 ? 'RED' : percentage >= 9 ? 'ORANGE' : 'GREEN';
 
     setAnswer({
-      nodeId: 'motive_burn',
+      nodeId: 'phase8b_burn_body_map',
       questionDarija: 'zones brûlées',
       responseRaw: zones.join(','),
       extractedValue: `${percentage.toFixed(0)}%`,
@@ -523,51 +417,31 @@ const TriageScreen: React.FC<Props> = ({ navigation, route }) => {
       isRedDetected: level === 'RED',
     });
 
-    const result: TriageResult = {
-      level,
-      label_fr: `Brûlure ${percentage.toFixed(0)}% SCT`,
-      label_darija: `حرقة ${percentage.toFixed(0)}% من الجسم`,
-      confidence: 1.0,
-      instructions_fr:
-        level === 'RED'
-          ? ['Refroidir avec eau tiède (15 min)', 'Appeler le 15 immédiatement', 'Ne pas décoller les vêtements']
-          : ["Refroidir la brûlure à l'eau", 'Couvrir avec un linge propre', 'Consulter un médecin'],
-      instructions_darija:
-        level === 'RED'
-          ? ['برّدو بالماء الفاتر 15 دقيقة', 'عيطو للـ 15 دابا', 'ما تنعلو الهدوم']
-          : ['برّدو الحرقة بالماء', 'غطيوها بحاجة نقية', 'روحو للطبيب'],
-      speak_result_darija:
-        level === 'RED'
-          ? 'الحرقة خطيرة جدا. برّدو بالماء الفاتر وعيطو للـ 15 دابا دابا!'
-          : 'عندكم حرقة محتاجة عناية. برّدو وروحو للطبيب.',
-      alert_samu: level === 'RED',
-      sms_template: null,
-    };
+    const sess = sessionRef.current;
 
-    const dotIdx = queueIndex.current;
     if (level === 'RED') {
-      markDot(dotIdx, 'red');
-      handleRedResultRef.current(result);
-    } else {
-      markDot(dotIdx, level === 'ORANGE' ? 'orange' : 'green');
-      setResult(result);
-      speakOnly(result.speak_result_darija, () => {
-        const sid = sessionRef.current?.id;
-        if (isMounted.current && sid) navigation.replace('Result', { sessionId: sid });
+      redDetectedRef.current = true;
+      setRedDetected(true);
+      setRedBar(true);
+      const instructions = 'برّدو بالماء الفاتر 15 دقيقة، ما تنعلو الهدوم، عيطو للـ 15 دابا!';
+      speakOnly(instructions, () => {
+        if (sess) triggerRedAlert({ ...sess, classification: 'RED' }).catch(() => {});
+        const nextId = triageEngine.resolveSentinel('__END__', runtimeProfileRef.current);
+        continueToNextRef.current(nextId);
       });
+    } else {
+      const nextId = triageEngine.resolveSentinel('__END__', runtimeProfileRef.current);
+      continueToNextRef.current(nextId);
     }
   }, [route.params?.burnResult]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Mount / Unmount ───────────────────────────────────────────────────────
-
   useEffect(() => {
     isMounted.current = true;
 
-    // STT callbacks via indirection so closures are always fresh
     onSTTResult((raw) => handleSTTResultRef.current(raw));
     onSTTError(() => {
       if (!isMounted.current) return;
-      // Retry STT on error — fallback buttons remain visible
       startListening('ar-MA');
     });
 
@@ -577,15 +451,12 @@ const TriageScreen: React.FC<Props> = ({ navigation, route }) => {
 
     networkMonitor.startMonitoring();
 
-    // Greeting → profiling
-    flowPhase.current = 'greeting';
-    setCurrentIcon('🏥');
+    // Greeting → first node
+    setIndicatorPhase('speaking');
+    setSpeaking(true);
     speakWithCallback(triageEngine.getGreeting(), () => {
       if (!isMounted.current) return;
-      flowPhase.current = 'profiling';
-      profilingIndexRef.current = 0;
-      setPhase('interlocutor');
-      askNextProfilingQuestion();
+      speakAndShowButtonsRef.current(FIRST_NODE);
     });
 
     return () => {
@@ -599,7 +470,6 @@ const TriageScreen: React.FC<Props> = ({ navigation, route }) => {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Derived UI ────────────────────────────────────────────────────────────
-
   const micState: 'disabled' | 'idle' | 'listening' =
     indicatorPhase === 'listening' ? 'listening' :
     indicatorPhase === 'waiting'   ? 'idle'      : 'disabled';
@@ -609,13 +479,14 @@ const TriageScreen: React.FC<Props> = ({ navigation, route }) => {
     indicatorPhase === 'speaking'   ? 'كنهضر...'                   :
     indicatorPhase === 'processing' ? 'كنفهم...'                    : '';
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  const progressFraction = Math.min(triagePhaseNum / TOTAL_PHASES, 1);
 
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
 
-        {/* Header: status + exit */}
+        {/* Header */}
         <View style={styles.header}>
           <StatusIndicator phase={indicatorPhase} />
           <TouchableOpacity
@@ -628,30 +499,20 @@ const TriageScreen: React.FC<Props> = ({ navigation, route }) => {
           </TouchableOpacity>
         </View>
 
-        {/* Progress dots — triage phase only */}
-        {progressDots.length > 0 && (
-          <View style={styles.progressRow}>
-            {progressDots.map((status, i) => (
-              <View
-                key={i}
-                style={[
-                  styles.progressDot,
-                  {
-                    backgroundColor:
-                      status === 'red'    ? COLORS.red    :
-                      status === 'orange' ? COLORS.orange :
-                      status === 'green'  ? COLORS.green  :
-                      i === queueIndex.current ? COLORS.primary : COLORS.border,
-                    opacity: i === queueIndex.current ? 1 : 0.55,
-                    transform: [{ scale: i === queueIndex.current ? 1.3 : 1 }],
-                  },
-                ]}
-              />
-            ))}
-          </View>
-        )}
+        {/* Progress bar */}
+        <View style={styles.progressTrack}>
+          <View
+            style={[
+              styles.progressFill,
+              {
+                width: `${progressFraction * 100}%` as `${number}%`,
+                backgroundColor: redBar ? COLORS.red : COLORS.green,
+              },
+            ]}
+          />
+        </View>
 
-        {/* Main content */}
+        {/* Main scrollable content */}
         <ScrollView
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
@@ -677,28 +538,34 @@ const TriageScreen: React.FC<Props> = ({ navigation, route }) => {
           ) : null}
         </ScrollView>
 
-        {/* Answer area */}
+        {/* Fixed bottom: mic + answer buttons */}
         <View style={styles.answerArea}>
           {hintText ? <Text style={styles.hint}>{hintText}</Text> : null}
 
-          {/* MicButton — active or idle depending on phase */}
-          <MicButton state={micState} onPress={handleMicPress} size={100} />
+          <MicButton state={micState} onPress={handleMicPress} size={80} />
 
-          {/* Fallback buttons — visible during listening as secondary input */}
-          {showButtons && (
-            <View style={styles.btnRow}>
-              {ANSWER_BUTTONS.map(({ label, value, color }) => (
+          {showButtons && currentButtons.length > 0 && (
+            <ScrollView
+              style={styles.btnScroll}
+              contentContainerStyle={styles.btnScrollContent}
+              showsVerticalScrollIndicator={currentButtons.length > 4}
+              keyboardShouldPersistTaps="always"
+            >
+              {currentButtons.map((btn) => (
                 <TouchableOpacity
-                  key={label}
-                  style={[styles.answerBtn, { backgroundColor: color }]}
-                  onPress={() => handleButtonPress(value)}
+                  key={btn.value}
+                  style={[
+                    styles.answerBtn,
+                    { backgroundColor: COLOR_MAP[btn.color_key] ?? COLORS.primary },
+                  ]}
+                  onPress={() => handleButtonPress(btn)}
                   activeOpacity={0.75}
-                  accessibilityLabel={label}
+                  accessibilityLabel={btn.label}
                 >
-                  <Text style={styles.answerBtnText}>{label}</Text>
+                  <Text style={styles.answerBtnText}>{btn.label}</Text>
                 </TouchableOpacity>
               ))}
-            </View>
+            </ScrollView>
           )}
         </View>
 
@@ -724,7 +591,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   exitBtn: {
     width: 36,
@@ -741,28 +608,26 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     fontWeight: '600',
   },
-  progressRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginBottom: 16,
-    paddingHorizontal: 4,
+  progressTrack: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: COLORS.border,
+    marginBottom: 14,
+    overflow: 'hidden',
   },
-  progressDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+  progressFill: {
+    height: 6,
+    borderRadius: 3,
   },
   content: {
     flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 20,
-    gap: 20,
+    paddingVertical: 16,
+    gap: 16,
   },
   icon: {
-    fontSize: 72,
+    fontSize: 64,
     textAlign: 'center',
   },
   question: {
@@ -776,12 +641,12 @@ const styles = StyleSheet.create({
   },
   waveContainer: {
     width: '100%',
-    height: 60,
+    height: 56,
     alignItems: 'center',
     justifyContent: 'center',
   },
   transcript: {
-    fontSize: 15,
+    fontSize: 14,
     color: COLORS.textMuted,
     textAlign: 'center',
     fontStyle: 'italic',
@@ -790,8 +655,8 @@ const styles = StyleSheet.create({
   },
   answerArea: {
     alignItems: 'center',
-    gap: 12,
-    paddingTop: 8,
+    gap: 10,
+    paddingTop: 6,
   },
   hint: {
     fontSize: 14,
@@ -799,29 +664,33 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     writingDirection: 'rtl',
   },
-  btnRow: {
-    flexDirection: 'row',
-    gap: 12,
+  btnScroll: {
+    maxHeight: 300,
     width: '100%',
-    marginTop: 4,
+  },
+  btnScrollContent: {
+    gap: 8,
+    paddingBottom: 4,
   },
   answerBtn: {
-    flex: 1,
-    height: 70,
-    borderRadius: 18,
+    width: '100%',
+    height: 60,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 3,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.18,
+    shadowOpacity: 0.15,
     shadowRadius: 4,
   },
   answerBtnText: {
-    fontSize: 26,
-    fontWeight: '900',
+    fontSize: 20,
+    fontWeight: '800',
     color: '#FFFFFF',
     writingDirection: 'rtl',
+    textAlign: 'center',
+    paddingHorizontal: 12,
   },
 });
 

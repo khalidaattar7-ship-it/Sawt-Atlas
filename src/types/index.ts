@@ -113,6 +113,41 @@ export interface SilenceEvent {
   escalatedToRed: boolean;
 }
 
+export interface TriageButton {
+  label: string;
+  value: string;
+  next: string;
+  color_key: 'green' | 'orange' | 'red' | 'primary';
+  keywords_darija?: string[];
+  triggerRed?: boolean;
+  instructions_darija?: string;
+}
+
+export interface TriageNodeV2 {
+  id: string;
+  phase: number;
+  icon: string;
+  profile_key?: string | null;
+  question_darija_patient: string;
+  question_darija_companion: string;
+  buttons: TriageButton[];
+}
+
+export interface RuntimeProfile {
+  interlocutorMode: InterlocutorMode;
+  sex: PatientSex | null;
+  ageCategory: AgeCategory | null;
+  isPregnant: boolean;
+  pregnancyMonths: 'trimester1' | 'trimester2' | 'trimester3' | null;
+  diabetes: boolean;
+  hypertension: boolean;
+  cardiac: boolean;
+  bloodThinner: boolean;
+  allergies: boolean;
+  isRecurrent: boolean;
+  _maternity_done: boolean;
+}
+
 export type RootStackParamList = {
   Home: undefined;
   Triage: { burnResult?: { zones: string[]; percentage: number } } | undefined;
