@@ -1,5 +1,5 @@
-// Sawt Atlas Urgence — Écran de triage principal : flux boutons (MVP Expo Go)
-// STT désactivé — 100% boutons pour Expo Go. Brancher le STT natif après le hackathon.
+// Sawt Atlas Urgence — Écran de triage principal : flux vocal AVPU+ABC+9 domaines
+// STT natif activé + boutons fallback visibles pendant l'écoute
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -20,10 +20,27 @@ import {
 } from '../types';
 import { useTriageStore } from '../store/triageStore';
 import triageEngine from '../engine/TriageEngine';
-import { speakWithCallback, stop as stopTTS } from '../engine/TTSModule';
-import { triggerRedAlert } from '../communication/AlertManager';
+import {
+  speakWithCallback,
+  speakFeedback,
+  stop as stopTTS,
+} from '../engine/TTSModule';
+import {
+  destroy as destroySTT,
+  onError as onSTTError,
+  onResult as onSTTResult,
+  startListening,
+  stopListening,
+} from '../engine/STTModule';
+import { SilenceDetector } from '../utils/silence-detector';
 import networkMonitor from '../utils/network-monitor';
+import { triggerRedAlert } from '../communication/AlertManager';
 import { COLORS } from '../constants/colors';
+import {
+  SILENCE_ESCALATION_MS,
+  SILENCE_WARNING_1_MS,
+  SILENCE_WARNING_2_MS,
+} from '../constants/config';
 import StatusIndicator, { IndicatorPhase } from '../components/StatusIndicator';
 import SpeechWave from '../components/SpeechWave';
 import MicButton from '../components/MicButton';
@@ -49,12 +66,12 @@ type ProfilingId = typeof PROFILING_QUESTIONS[number];
 type DotStatus = 'pending' | 'green' | 'orange' | 'red';
 type FlowPhase = 'greeting' | 'profiling' | 'triage' | 'done';
 
-// ─── Answer buttons — MVP button-only mode (replace with STT in production) ──
+// ─── Fallback buttons (secondary to STT, always visible during listening) ────
 
 const ANSWER_BUTTONS = [
-  { label: 'إيه',  value: 'واه',   color: COLORS.green  },
-  { label: 'لا',   value: 'لا',    color: COLORS.red    },
-  { label: 'شوية', value: 'شوية',  color: COLORS.orange },
+  { label: 'إيه',  value: 'واه',  color: COLORS.green  },
+  { label: 'لا',   value: 'لا',   color: COLORS.red    },
+  { label: 'شوية', value: 'شوية', color: COLORS.orange },
 ] as const;
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -64,20 +81,23 @@ const TriageScreen: React.FC<Props> = ({ navigation, route }) => {
     session,
     setPhase,
     setSpeaking,
+    setListening,
     setProcessing,
     setAnswer,
     setResult,
     setRedDetected,
     nextNode,
+    setSilenceState,
     updateSession,
   } = useTriageStore();
 
   // ── UI state ──────────────────────────────────────────────────────────────
   const [indicatorPhase, setIndicatorPhase] = useState<IndicatorPhase>('waiting');
-  const [currentQuestion, setCurrentQuestion]   = useState('');
-  const [currentIcon, setCurrentIcon]           = useState('🏥');
-  const [progressDots, setProgressDots]         = useState<DotStatus[]>([]);
-  const [showButtons, setShowButtons]           = useState(false);
+  const [currentQuestion, setCurrentQuestion] = useState('');
+  const [transcript, setTranscript]           = useState('');
+  const [currentIcon, setCurrentIcon]         = useState('🏥');
+  const [progressDots, setProgressDots]       = useState<DotStatus[]>([]);
+  const [showButtons, setShowButtons]         = useState(false);
 
   // ── Flow refs ─────────────────────────────────────────────────────────────
   const isMounted          = useRef(true);
@@ -105,7 +125,16 @@ const TriageScreen: React.FC<Props> = ({ navigation, route }) => {
 
   useEffect(() => { sessionRef.current = session; }, [session]);
 
-  // ── Progress dots ─────────────────────────────────────────────────────────
+  // SilenceDetector — stable reference, created once
+  const sd = useRef(
+    new SilenceDetector({
+      warning1Ms: SILENCE_WARNING_1_MS,
+      warning2Ms: SILENCE_WARNING_2_MS,
+      escalationMs: SILENCE_ESCALATION_MS,
+    })
+  ).current;
+
+  // ── Progress dot helpers ──────────────────────────────────────────────────
 
   const markDot = useCallback((index: number, status: DotStatus) => {
     setProgressDots((prev) => {
@@ -116,25 +145,49 @@ const TriageScreen: React.FC<Props> = ({ navigation, route }) => {
     });
   }, []);
 
-  // ── TTS helpers ───────────────────────────────────────────────────────────
+  // ── Phase transition helpers ──────────────────────────────────────────────
 
-  // Speak question → when TTS finishes → show answer buttons
-  const speakThenShowButtons = useCallback((text: string) => {
+  // Opens microphone + shows fallback buttons simultaneously
+  const startListeningPhase = useCallback(() => {
+    if (!isMounted.current) return;
+    setIndicatorPhase('listening');
+    setSpeaking(false);
+    setListening(true);
+    setShowButtons(true);   // fallback buttons always visible while listening
+    sd.start();
+    startListening('ar-MA');
+  }, [setSpeaking, setListening, sd]);
+
+  // Stops microphone + hides buttons
+  const stopListeningPhase = useCallback(() => {
+    sd.stop();
+    stopListening();
+    setListening(false);
+    setShowButtons(false);
+    setProcessing(true);
+    setIndicatorPhase('processing');
+  }, [setListening, setProcessing, sd]);
+
+  // Speak question → 500ms buffer → open mic + show buttons
+  const speakThenListen = useCallback((text: string) => {
     if (!isMounted.current) return;
     setIndicatorPhase('speaking');
     setSpeaking(true);
     setShowButtons(false);
+    setTranscript('');
     currentQuestionRef.current = text;
     setCurrentQuestion(text);
     speakWithCallback(text, () => {
       if (!isMounted.current) return;
-      setSpeaking(false);
-      setIndicatorPhase('waiting');
-      setShowButtons(true);
+      // 500ms buffer so audio fully drains before mic opens
+      setTimeout(() => {
+        if (!isMounted.current) return;
+        startListeningPhase();
+      }, 500);
     });
-  }, [setSpeaking]);
+  }, [setSpeaking, startListeningPhase]);
 
-  // Speak result/closing text without showing buttons afterward
+  // Speak result/closing text — no mic activation afterward
   const speakOnly = useCallback((text: string, onDone?: () => void) => {
     if (!isMounted.current) return;
     setIndicatorPhase('speaking');
@@ -148,9 +201,38 @@ const TriageScreen: React.FC<Props> = ({ navigation, route }) => {
     });
   }, [setSpeaking]);
 
+  // ── Silence escalation handlers ───────────────────────────────────────────
+
+  const handleSilenceWarning1 = useCallback(() => {
+    if (!isMounted.current) return;
+    setSilenceState('warning_15s');
+    stopTTS();
+    speakWithCallback('واش سمعتيني؟', () => {
+      if (isMounted.current) setIndicatorPhase('listening');
+    });
+  }, [setSilenceState]);
+
+  const handleSilenceWarning2 = useCallback(() => {
+    if (!isMounted.current) return;
+    setSilenceState('warning_30s');
+    stopTTS();
+    speakWithCallback('عيط لي واحد يساعدك!', () => {
+      if (isMounted.current) setIndicatorPhase('listening');
+    });
+  }, [setSilenceState]);
+
+  const handleSilenceEscalation = useCallback(() => {
+    if (!isMounted.current) return;
+    setSilenceState('escalated_40s');
+    setRedDetected(true);
+    stopTTS();
+    stopListening();
+    navigation.replace('Companion');
+  }, [setSilenceState, setRedDetected, navigation]);
+
   // ── Forward refs for mutually recursive flow functions ────────────────────
   // Re-assigned every render (no-deps useEffect) so they never go stale.
-  const advanceQueueRef    = useRef<() => void>(() => {});
+  const advanceQueueRef     = useRef<() => void>(() => {});
   const handleNodeAnswerRef = useRef<(nodeId: string, raw: string) => void>(() => {});
   const handleRedResultRef  = useRef<(result: TriageResult) => void>(() => {});
 
@@ -224,7 +306,7 @@ const TriageScreen: React.FC<Props> = ({ navigation, route }) => {
           currentNodeId.current = processed.nextNodeId;
           nextNode(processed.nextNodeId);
           setCurrentIcon(branch.icon ?? '❓');
-          speakThenShowButtons(triageEngine.getQuestionText(branch, interlocutorMode.current));
+          speakThenListen(triageEngine.getQuestionText(branch, interlocutorMode.current));
         } else {
           queueIndex.current++;
           advanceQueueRef.current();
@@ -279,7 +361,7 @@ const TriageScreen: React.FC<Props> = ({ navigation, route }) => {
       currentNodeId.current = nodeId;
       nextNode(nodeId);
       setCurrentIcon(node.icon ?? '❓');
-      speakThenShowButtons(triageEngine.getQuestionText(node, interlocutorMode.current));
+      speakThenListen(triageEngine.getQuestionText(node, interlocutorMode.current));
     };
   });
 
@@ -344,7 +426,6 @@ const TriageScreen: React.FC<Props> = ({ navigation, route }) => {
     }
 
     if (profilingIndexRef.current >= PROFILING_QUESTIONS.length) {
-      // Profiling complete → persist + start triage
       updateSession({
         patientProfile: localProfile.current,
         interlocutorMode: interlocutorMode.current,
@@ -362,15 +443,39 @@ const TriageScreen: React.FC<Props> = ({ navigation, route }) => {
     const questionId = PROFILING_QUESTIONS[profilingIndexRef.current];
     const text = triageEngine.getProfilingQuestion(questionId, interlocutorMode.current);
     setCurrentIcon('📋');
-    speakThenShowButtons(text);
-  }, [updateSession, setPhase, speakThenShowButtons]);
+    speakThenListen(text);
+  }, [updateSession, setPhase, speakThenListen]);
 
-  // ── Button press → process answer ─────────────────────────────────────────
+  // ── STT result callback (via ref so always fresh) ─────────────────────────
+
+  const handleSTTResultRef = useRef<(raw: string) => void>(() => {});
+  useEffect(() => {
+    handleSTTResultRef.current = (raw: string) => {
+      if (!isMounted.current || !raw.trim()) return;
+      sd.reset();
+      setTranscript(raw);
+      setShowButtons(false);
+      stopListeningPhase();
+      speakFeedback().catch(() => {});
+
+      if (flowPhase.current === 'profiling') {
+        const qId = PROFILING_QUESTIONS[profilingIndexRef.current];
+        applyProfilingAnswer(qId, raw);
+        profilingIndexRef.current++;
+        askNextProfilingQuestion();
+      } else if (flowPhase.current === 'triage') {
+        handleNodeAnswerRef.current(currentNodeId.current, raw);
+      }
+    };
+  });
+
+  // ── Fallback button press (user prefers button over voice) ────────────────
 
   const handleButtonPress = useCallback((value: string) => {
-    if (!showButtons) return;
-    setShowButtons(false);
-    setIndicatorPhase('processing');
+    if (indicatorPhase !== 'listening') return;
+    sd.reset();
+    setTranscript('');
+    stopListeningPhase();
 
     if (flowPhase.current === 'profiling') {
       const qId = PROFILING_QUESTIONS[profilingIndexRef.current];
@@ -380,7 +485,22 @@ const TriageScreen: React.FC<Props> = ({ navigation, route }) => {
     } else if (flowPhase.current === 'triage') {
       handleNodeAnswerRef.current(currentNodeId.current, value);
     }
-  }, [showButtons, applyProfilingAnswer, askNextProfilingQuestion]);
+  }, [indicatorPhase, sd, stopListeningPhase, applyProfilingAnswer, askNextProfilingQuestion]);
+
+  // ── Manual MicButton tap ──────────────────────────────────────────────────
+
+  const handleMicPress = useCallback(() => {
+    if (indicatorPhase !== 'listening') return;
+    stopListeningPhase();
+    if (flowPhase.current === 'profiling') {
+      const qId = PROFILING_QUESTIONS[profilingIndexRef.current];
+      applyProfilingAnswer(qId, '');
+      profilingIndexRef.current++;
+      askNextProfilingQuestion();
+    } else if (flowPhase.current === 'triage') {
+      handleNodeAnswerRef.current(currentNodeId.current, '');
+    }
+  }, [indicatorPhase, stopListeningPhase, applyProfilingAnswer, askNextProfilingQuestion]);
 
   // ── Burn result returned from BodyMapScreen ───────────────────────────────
 
@@ -442,6 +562,19 @@ const TriageScreen: React.FC<Props> = ({ navigation, route }) => {
 
   useEffect(() => {
     isMounted.current = true;
+
+    // STT callbacks via indirection so closures are always fresh
+    onSTTResult((raw) => handleSTTResultRef.current(raw));
+    onSTTError(() => {
+      if (!isMounted.current) return;
+      // Retry STT on error — fallback buttons remain visible
+      startListening('ar-MA');
+    });
+
+    sd.onWarning1(handleSilenceWarning1);
+    sd.onWarning2(handleSilenceWarning2);
+    sd.onEscalation(handleSilenceEscalation);
+
     networkMonitor.startMonitoring();
 
     // Greeting → profiling
@@ -458,9 +591,23 @@ const TriageScreen: React.FC<Props> = ({ navigation, route }) => {
     return () => {
       isMounted.current = false;
       stopTTS();
+      stopListening();
+      sd.stop();
+      destroySTT();
       networkMonitor.stopMonitoring();
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Derived UI ────────────────────────────────────────────────────────────
+
+  const micState: 'disabled' | 'idle' | 'listening' =
+    indicatorPhase === 'listening' ? 'listening' :
+    indicatorPhase === 'waiting'   ? 'idle'      : 'disabled';
+
+  const hintText =
+    indicatorPhase === 'listening'  ? 'جاوب بالصوت أو اضغط زر...' :
+    indicatorPhase === 'speaking'   ? 'كنهضر...'                   :
+    indicatorPhase === 'processing' ? 'كنفهم...'                    : '';
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -517,22 +664,27 @@ const TriageScreen: React.FC<Props> = ({ navigation, route }) => {
 
           <View style={styles.waveContainer}>
             <SpeechWave
-              type="speaking"
-              active={indicatorPhase === 'speaking'}
-              color={COLORS.primary}
+              type={indicatorPhase === 'speaking' ? 'speaking' : 'listening'}
+              active={indicatorPhase === 'speaking' || indicatorPhase === 'listening'}
+              color={indicatorPhase === 'speaking' ? COLORS.primary : COLORS.red}
               barCount={20}
               maxHeight={48}
             />
           </View>
+
+          {transcript ? (
+            <Text style={styles.transcript}>{transcript}</Text>
+          ) : null}
         </ScrollView>
 
         {/* Answer area */}
         <View style={styles.answerArea}>
+          {hintText ? <Text style={styles.hint}>{hintText}</Text> : null}
 
-          {/* MicButton — décoratif uniquement, STT désactivé pour MVP Expo Go */}
-          <MicButton state="disabled" onPress={() => {}} size={80} />
+          {/* MicButton — active or idle depending on phase */}
+          <MicButton state={micState} onPress={handleMicPress} size={100} />
 
-          {/* Answer buttons — apparaissent dès que le TTS est terminé */}
+          {/* Fallback buttons — visible during listening as secondary input */}
           {showButtons && (
             <View style={styles.btnRow}>
               {ANSWER_BUTTONS.map(({ label, value, color }) => (
@@ -547,10 +699,6 @@ const TriageScreen: React.FC<Props> = ({ navigation, route }) => {
                 </TouchableOpacity>
               ))}
             </View>
-          )}
-
-          {indicatorPhase === 'processing' && (
-            <Text style={styles.processingHint}>كنفهم...</Text>
           )}
         </View>
 
@@ -632,15 +780,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  transcript: {
+    fontSize: 15,
+    color: COLORS.textMuted,
+    textAlign: 'center',
+    fontStyle: 'italic',
+    paddingHorizontal: 16,
+    writingDirection: 'rtl',
+  },
   answerArea: {
     alignItems: 'center',
-    gap: 16,
+    gap: 12,
     paddingTop: 8,
+  },
+  hint: {
+    fontSize: 14,
+    color: COLORS.textMuted,
+    textAlign: 'center',
+    writingDirection: 'rtl',
   },
   btnRow: {
     flexDirection: 'row',
     gap: 12,
     width: '100%',
+    marginTop: 4,
   },
   answerBtn: {
     flex: 1,
@@ -658,12 +821,6 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: '900',
     color: '#FFFFFF',
-    writingDirection: 'rtl',
-  },
-  processingHint: {
-    fontSize: 15,
-    color: COLORS.textMuted,
-    textAlign: 'center',
     writingDirection: 'rtl',
   },
 });
