@@ -47,7 +47,15 @@
     "plugins": [
       "expo-sqlite",
       "expo-audio",
-      "@react-native-voice/voice"
+      "@react-native-voice/voice",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableJetifier": true
+          }
+        }
+      ]
     ],
     "extra": {
       "eas": {
