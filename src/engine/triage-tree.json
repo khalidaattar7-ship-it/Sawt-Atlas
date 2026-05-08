@@ -358,6 +358,7 @@
       "id": "phase5_avpu",
       "phase": 5,
       "icon": "🧠",
+      "profile_key": "avpuLevel",
       "question_darija_patient": "واش الشخص فايق؟ واش كيسمعك و كيجاوبك؟",
       "question_darija_companion": "واش الشخص فايق؟ واش كيسمعك و كيجاوبك؟",
       "buttons": [

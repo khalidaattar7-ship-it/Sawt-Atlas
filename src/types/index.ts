@@ -145,7 +145,9 @@ export interface RuntimeProfile {
   bloodThinner: boolean;
   allergies: boolean;
   isRecurrent: boolean;
+  avpuLevel: 'alert' | 'voice' | 'unresponsive' | null;
   _maternity_done: boolean;
+  _red_skip: boolean;
 }
 
 export type RootStackParamList = {
